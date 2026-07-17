@@ -1,0 +1,106 @@
+rules_version = '2';
+
+// StayDesk — workspace-isolated multi-tenant rules.
+// Deploy with: firebase deploy --only firestore:rules
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Privileged internal read — bypasses rules, safe to use inside conditions.
+    function myProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function myWorkspaceId() {
+      return myProfile().workspaceId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && myProfile().role == 'admin';
+    }
+
+    function inMyWorkspace(data) {
+      return isSignedIn() && data.workspaceId == myWorkspaceId();
+    }
+
+    function unchanged(field) {
+      return request.resource.data[field] == resource.data[field];
+    }
+
+    // ── users ──
+    // Self-registration creates either a brand-new workspace (workspaceId == own uid)
+    // or joins an existing one via a valid, unused, active invite code.
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || inMyWorkspace(resource.data));
+
+      allow create: if isSignedIn() && request.auth.uid == userId && (
+        request.resource.data.workspaceId == request.auth.uid ||
+        (
+          request.resource.data.inviteCode is string &&
+          exists(/databases/$(database)/documents/inviteCodes/$(request.resource.data.inviteCode)) &&
+          get(/databases/$(database)/documents/inviteCodes/$(request.resource.data.inviteCode)).data.active == true &&
+          get(/databases/$(database)/documents/inviteCodes/$(request.resource.data.inviteCode)).data.usedBy == null &&
+          get(/databases/$(database)/documents/inviteCodes/$(request.resource.data.inviteCode)).data.workspaceId == request.resource.data.workspaceId &&
+          get(/databases/$(database)/documents/inviteCodes/$(request.resource.data.inviteCode)).data.role == request.resource.data.role
+        )
+      );
+
+      // Users may update their own non-privileged fields; admins may change role
+      // for members of their own workspace, but nobody may move a user between workspaces.
+      allow update: if isSignedIn() && unchanged('workspaceId') && (
+        (request.auth.uid == userId && unchanged('role')) ||
+        (isAdmin() && inMyWorkspace(resource.data))
+      );
+
+      allow delete: if false;
+    }
+
+    // ── inviteCodes ── (doc ID == the code itself)
+    match /inviteCodes/{code} {
+      // Readable pre-auth so a prospective user can validate a code before signing up.
+      // Listing is blocked so codes can't be enumerated in bulk.
+      allow get: if true;
+      allow list: if isAdmin() && inMyWorkspace(resource.data);
+
+      allow create: if isAdmin() && request.resource.data.workspaceId == myWorkspaceId();
+
+      // A brand-new signed-in user may claim an unused code as themselves;
+      // an admin may otherwise manage codes in their own workspace.
+      allow update: if isSignedIn() && (
+        (
+          resource.data.usedBy == null &&
+          request.resource.data.usedBy == request.auth.uid &&
+          unchanged('workspaceId') && unchanged('role') && unchanged('code')
+        ) ||
+        (isAdmin() && inMyWorkspace(resource.data) && unchanged('workspaceId'))
+      );
+
+      allow delete: if isAdmin() && inMyWorkspace(resource.data);
+    }
+
+    // ── workspace-scoped business data ──
+    match /apartments/{id} {
+      allow read: if inMyWorkspace(resource.data);
+      allow create: if inMyWorkspace(request.resource.data);
+      allow update: if inMyWorkspace(resource.data) && unchanged('workspaceId');
+      allow delete: if inMyWorkspace(resource.data);
+    }
+
+    match /bookings/{id} {
+      allow read: if inMyWorkspace(resource.data);
+      allow create: if inMyWorkspace(request.resource.data);
+      allow update: if inMyWorkspace(resource.data) && unchanged('workspaceId');
+      allow delete: if inMyWorkspace(resource.data);
+    }
+
+    match /guests/{id} {
+      allow read: if inMyWorkspace(resource.data);
+      allow create: if inMyWorkspace(request.resource.data);
+      allow update: if inMyWorkspace(resource.data) && unchanged('workspaceId');
+      allow delete: if inMyWorkspace(resource.data);
+    }
+  }
+}
