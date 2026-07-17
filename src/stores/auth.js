@@ -6,7 +6,8 @@ import {
   signOut,
   onAuthStateChanged,
   createUserWithEmailAndPassword,
-  updateProfile
+  updateProfile,
+  sendPasswordResetEmail
 } from 'firebase/auth'
 import {
   doc, getDoc, setDoc, updateDoc, serverTimestamp
@@ -63,7 +64,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // Login / Register with invite code
-  async function loginWithInviteCode(code, username, password) {
+  async function loginWithInviteCode(code, username, email, password) {
     error.value = null
     try {
       // Look up the invite code (its Firestore doc ID is the code itself)
@@ -83,8 +84,7 @@ export const useAuthStore = defineStore('auth', () => {
         return { success: false, error: error.value }
       }
 
-      // Create Firebase Auth user
-      const email = `${username.toLowerCase().replace(/\s+/g, '')}@staydesk.app`
+      // Create Firebase Auth user — a real email so "forgot password" works later
       const cred = await createUserWithEmailAndPassword(auth, email, password)
       await updateProfile(cred.user, { displayName: username })
 
@@ -112,10 +112,23 @@ export const useAuthStore = defineStore('auth', () => {
       return { success: true }
     } catch (e) {
       if (e.code === 'auth/email-already-in-use') {
-        error.value = 'Username already taken.'
+        error.value = 'An account with this email already exists. Go to Sign in.'
       } else {
         error.value = e.message
       }
+      return { success: false, error: error.value }
+    }
+  }
+
+  async function resetPassword(email) {
+    error.value = null
+    try {
+      await sendPasswordResetEmail(auth, email)
+      return { success: true }
+    } catch (e) {
+      error.value = e.code === 'auth/user-not-found'
+        ? 'No account found with that email.'
+        : e.message
       return { success: false, error: error.value }
     }
   }
@@ -129,6 +142,6 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     user, userProfile, loading, error,
     isAuthenticated, isAdmin, workspaceId,
-    init, loginWithCredentials, loginWithInviteCode, logout, loadUserProfile
+    init, loginWithCredentials, loginWithInviteCode, resetPassword, logout, loadUserProfile
   }
 })

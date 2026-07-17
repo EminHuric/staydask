@@ -4,17 +4,22 @@
     <div class="page-header">
       <div class="page-header-text">
         <h1>Apartments</h1>
-        <p class="text-muted text-sm mt-2">{{ apartments.length }} apartment{{ apartments.length !== 1 ? 's' : '' }} in your workspace</p>
+        <p class="text-muted text-sm mt-2">
+          {{ apartments.length }}{{ apartmentsStore.limit != null ? ` / ${apartmentsStore.limit}` : '' }}
+          apartment{{ apartments.length !== 1 ? 's' : '' }} in your workspace
+        </p>
       </div>
-      <button class="btn btn-primary add-btn" @click="openAdd">+ Add Apartment</button>
+      <button class="btn btn-primary add-btn" :disabled="atLimit" :title="atLimit ? limitMessage : ''" @click="openAdd">+ Add Apartment</button>
     </div>
+
+    <p v-if="atLimit" class="limit-banner">{{ limitMessage }}</p>
 
     <!-- Empty state -->
     <div v-if="apartments.length === 0 && !loading" class="empty-card">
       <div class="empty-icon">🏠</div>
       <h3>No apartments yet</h3>
       <p class="text-muted text-sm">Add your first apartment to start managing bookings.</p>
-      <button class="btn btn-primary mt-4" @click="openAdd">+ Add Apartment</button>
+      <button class="btn btn-primary mt-4" :disabled="atLimit" @click="openAdd">+ Add Apartment</button>
     </div>
 
     <!-- Apartments grid -->
@@ -184,6 +189,8 @@
               </div>
             </div>
 
+            <div v-if="formError" class="error-msg">{{ formError }}</div>
+
             <div class="form-group">
               <label class="form-label">Description</label>
               <textarea v-model="form.description" class="form-input" rows="2"
@@ -243,6 +250,9 @@ const bookingsStore = useBookingsStore()
 
 const apartments = computed(() => apartmentsStore.apartments)
 const loading = computed(() => apartmentsStore.loading)
+const atLimit = computed(() => apartmentsStore.limit != null && apartments.value.length >= apartmentsStore.limit)
+const limitMessage = computed(() => `You've reached your apartment limit (${apartmentsStore.limit}). Ask your admin to raise it.`)
+const formError = ref('')
 const thisYear = new Date().getFullYear()
 const today = startOfDay(new Date())
 
@@ -343,8 +353,10 @@ const defaultForm = () => ({
 const form = ref(defaultForm())
 
 function openAdd() {
+  if (atLimit.value) return
   editing.value = null
   form.value = defaultForm()
+  formError.value = ''
   showModal.value = true
 }
 
@@ -358,12 +370,14 @@ function openEdit(apt) {
     features: apt.features ? [...apt.features] : [],
     color: apt.color || '#3b82f6'
   }
+  formError.value = ''
   showModal.value = true
 }
 
 function closeModal() {
   showModal.value = false
   editing.value = null
+  formError.value = ''
 }
 
 function confirmDelete(apt) {
@@ -372,6 +386,7 @@ function confirmDelete(apt) {
 
 async function saveApartment() {
   saving.value = true
+  formError.value = ''
   const data = {
     name: form.value.name,
     maxGuests: form.value.maxGuests,
@@ -381,13 +396,17 @@ async function saveApartment() {
     features: form.value.features,
     color: form.value.color
   }
-  if (editing.value) {
-    await apartmentsStore.updateApartment(editing.value, data)
-  } else {
-    await apartmentsStore.addApartment(data)
+  try {
+    if (editing.value) {
+      await apartmentsStore.updateApartment(editing.value, data)
+    } else {
+      await apartmentsStore.addApartment(data)
+    }
+    closeModal()
+  } catch (e) {
+    formError.value = e.message
   }
   saving.value = false
-  closeModal()
 }
 
 async function doDelete() {
@@ -411,6 +430,24 @@ async function doDelete() {
 }
 .page-header-text { flex: 1; min-width: 0; }
 .add-btn { flex-shrink: 0; white-space: nowrap; }
+.add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.limit-banner {
+  background: var(--red-dim);
+  color: var(--red);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.9rem;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.error-msg {
+  padding: 0.6rem 0.9rem;
+  background: var(--red-dim);
+  color: var(--red);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+}
 
 /* ── Empty state ── */
 .empty-card {

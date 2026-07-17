@@ -15,6 +15,45 @@
       </div>
     </div>
 
+    <!-- Workspace overview -->
+    <div class="card mb-4">
+      <h2 class="mb-4">Workspace Overview</h2>
+      <div class="grid-4">
+        <div class="stat-card">
+          <div class="stat-icon">🏠</div>
+          <div class="stat-value">{{ apartmentsStore.apartments.length }}</div>
+          <div class="stat-label">Apartments</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📅</div>
+          <div class="stat-value">{{ bookingsStore.bookings.length }}</div>
+          <div class="stat-label">Bookings</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">👥</div>
+          <div class="stat-value">{{ guestsStore.guests.length }}</div>
+          <div class="stat-label">Guests</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">💰</div>
+          <div class="stat-value">€{{ bookingsStore.totalRevenue.toLocaleString() }}</div>
+          <div class="stat-label">Total Revenue</div>
+        </div>
+      </div>
+
+      <div class="limit-row">
+        <div>
+          <div class="text-sm font-medium">Apartment limit</div>
+          <div class="text-xs text-muted">Cap how many apartments users in this workspace can create. Leave empty for no limit.</div>
+        </div>
+        <div class="limit-controls">
+          <input v-model="limitInput" class="form-input limit-input" type="number" min="0" placeholder="No limit" />
+          <button class="btn btn-primary btn-sm" @click="saveLimit">Save</button>
+        </div>
+      </div>
+      <div v-if="limitSaved" class="text-xs" style="color: var(--green)">Saved.</div>
+    </div>
+
     <!-- Two-column layout -->
     <div class="admin-grid">
       <!-- Invite codes -->
@@ -127,17 +166,33 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { format } from 'date-fns'
 import { useAdminStore } from '@/stores/admin'
 import { useAuthStore } from '@/stores/auth'
+import { useApartmentsStore } from '@/stores/apartments'
+import { useBookingsStore } from '@/stores/bookings'
+import { useGuestsStore } from '@/stores/guests'
 
 const adminStore = useAdminStore()
 const authStore = useAuthStore()
+const apartmentsStore = useApartmentsStore()
+const bookingsStore = useBookingsStore()
+const guestsStore = useGuestsStore()
 
 const newCode = ref('')
 const copied = ref(false)
 const newCodeIsAdmin = ref(false)
+
+const limitInput = ref(apartmentsStore.limit ?? '')
+const limitSaved = ref(false)
+watch(() => apartmentsStore.limit, (v) => { limitInput.value = v ?? '' })
+
+async function saveLimit() {
+  await apartmentsStore.setLimit(limitInput.value === '' ? null : limitInput.value)
+  limitSaved.value = true
+  setTimeout(() => { limitSaved.value = false }, 2000)
+}
 
 onMounted(() => {
   adminStore.subscribeInviteCodes()
@@ -274,6 +329,19 @@ function formatDate(ts) {
 .user-right { flex-shrink: 0; display: flex; align-items: center; gap: 0.5rem; }
 
 .header-actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+
+.limit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.limit-controls { display: flex; align-items: center; gap: 0.5rem; }
+.limit-input { width: 120px; }
 .role-toggle {
   display: flex;
   align-items: center;
@@ -328,5 +396,8 @@ function formatDate(ts) {
   .grid-3 { grid-template-columns: 1fr; }
   .user-row { flex-wrap: wrap; }
   .user-right { width: 100%; justify-content: space-between; }
+  .limit-row { flex-direction: column; align-items: stretch; }
+  .limit-controls { justify-content: space-between; }
+  .limit-input { width: 100%; }
 }
 </style>
