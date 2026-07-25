@@ -1,10 +1,11 @@
 rules_version = '2';
 
-// RMS (Reservation Management System) — every account is its own fully isolated tenant (own apartments/
-// bookings/guests). "Admin" is a platform-wide role: admins manage accounts
-// (invite codes, roles, enabling/disabling and deleting users) but cannot read
-// anyone else's actual business data — only the denormalized usage counters
-// each account maintains on its own user doc.
+// RMS (Reservation Management System) — every account is its own tenant (own
+// apartments/bookings/guests); regular users can never see each other's data.
+// "Admin" is a platform-wide role: admins manage accounts (invite codes, roles,
+// enabling/disabling and deleting users) and may READ any account's data for
+// support, but can never WRITE another account's data. The super admin (first
+// admin, from /setup) is protected: other admins can't disable/demote/delete it.
 // Deploy with: firebase deploy --only firestore:rules
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -20,6 +21,12 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && myProfile().role == 'admin';
+    }
+
+    // The platform's root account — the first admin, created at /setup. Other
+    // admins can never disable, demote or delete this account.
+    function superAdminUid() {
+      return get(/databases/$(database)/documents/meta/setup).data.completedBy;
     }
 
     // Every collection of business data is scoped to its owner's own uid.
@@ -69,15 +76,16 @@ service cloud.firestore {
 
       // A user may update their own usage counters but never their own role or
       // disabled flag; only an admin may change roles or enable/disable accounts.
+      // No admin may flip the super admin's role/disabled except the super admin.
       // workspaceId can never change. .get(...) tolerates docs without 'disabled'.
       allow update: if isSignedIn() && unchanged('workspaceId') && (
         (request.auth.uid == userId && unchanged('role') &&
           request.resource.data.get('disabled', false) == resource.data.get('disabled', false)) ||
-        isAdmin()
+        (isAdmin() && (userId != superAdminUid() || request.auth.uid == superAdminUid()))
       );
 
-      // Only admins may remove an account.
-      allow delete: if isAdmin();
+      // Only admins may remove an account, and the super admin can never be removed.
+      allow delete: if isAdmin() && userId != superAdminUid();
     }
 
     // ── inviteCodes ── (doc ID == the code itself; admin-managed platform-wide)
@@ -106,22 +114,25 @@ service cloud.firestore {
     // ── private, per-account business data ──
     // Reads are scoped to the owner (cheap). Writes additionally require the
     // account to be active, so a disabled user can't keep changing data.
+    // Owner reads + writes their own; an admin may READ any account (read-only
+    // inspection for support) but can never write another account's data
+    // (writes still require isActiveOwner, i.e. workspaceId == the writer's uid).
     match /apartments/{id} {
-      allow read: if isOwner(resource.data);
+      allow read: if isOwner(resource.data) || isAdmin();
       allow create: if isActiveOwner(request.resource.data);
       allow update: if isActiveOwner(resource.data) && unchanged('workspaceId');
       allow delete: if isActiveOwner(resource.data);
     }
 
     match /bookings/{id} {
-      allow read: if isOwner(resource.data);
+      allow read: if isOwner(resource.data) || isAdmin();
       allow create: if isActiveOwner(request.resource.data);
       allow update: if isActiveOwner(resource.data) && unchanged('workspaceId');
       allow delete: if isActiveOwner(resource.data);
     }
 
     match /guests/{id} {
-      allow read: if isOwner(resource.data);
+      allow read: if isOwner(resource.data) || isAdmin();
       allow create: if isActiveOwner(request.resource.data);
       allow update: if isActiveOwner(resource.data) && unchanged('workspaceId');
       allow delete: if isActiveOwner(resource.data);

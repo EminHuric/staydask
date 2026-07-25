@@ -70,6 +70,7 @@
               <div class="user-email">{{ u.email }}</div>
             </div>
             <div class="user-badges">
+              <span v-if="isSuper(u)" class="badge badge-amber">★ Main admin</span>
               <span :class="['badge', u.role === 'admin' ? 'badge-amber' : 'badge-blue']">{{ u.role || 'user' }}</span>
               <span :class="['badge', u.disabled ? 'badge-red' : 'badge-green']">{{ u.disabled ? 'Disabled' : 'Active' }}</span>
             </div>
@@ -83,8 +84,9 @@
           </div>
 
           <div class="user-actions">
+            <button class="btn btn-ghost btn-sm" @click="openInspect(u)">👁 View data</button>
             <button class="btn btn-ghost btn-sm" @click="openNotes(u)">📝 Notes</button>
-            <template v-if="u.id !== authStore.user?.uid">
+            <template v-if="u.id !== authStore.user?.uid && !isSuper(u)">
               <button class="btn btn-ghost btn-sm" @click="toggleRole(u)">
                 {{ u.role === 'admin' ? 'Demote' : 'Make admin' }}
               </button>
@@ -96,7 +98,8 @@
               >{{ u.disabled ? 'Enable' : 'Disable' }}</button>
               <button class="btn btn-danger btn-sm" @click="removeUser(u)">Delete</button>
             </template>
-            <span v-else class="text-xs text-muted self-note">You can't disable or delete your own account.</span>
+            <span v-else-if="u.id === authStore.user?.uid" class="text-xs text-muted self-note">This is your account.</span>
+            <span v-else class="text-xs text-muted self-note">Main admin — protected account.</span>
           </div>
         </div>
       </div>
@@ -226,6 +229,75 @@
         </div>
       </div>
     </div>
+
+    <!-- Read-only account inspection -->
+    <div v-if="adminStore.inspect.user" class="modal-overlay" @click.self="closeInspect">
+      <div class="inspect-modal">
+        <div class="notes-modal-header">
+          <div>
+            <h3>👁 {{ adminStore.inspect.user.username || adminStore.inspect.user.email }}</h3>
+            <p class="text-xs text-muted">Read-only — you can view this account's data but not change it.</p>
+          </div>
+          <button class="icon-close" @click="closeInspect">✕</button>
+        </div>
+
+        <div v-if="adminStore.inspect.loading" class="inspect-state">Loading…</div>
+
+        <template v-else>
+          <div class="inspect-tabs">
+            <button :class="['itab', { active: inspectTab === 'bookings' }]" @click="inspectTab = 'bookings'">
+              Bookings <span class="itab-n">{{ adminStore.inspect.bookings.length }}</span>
+            </button>
+            <button :class="['itab', { active: inspectTab === 'apartments' }]" @click="inspectTab = 'apartments'">
+              Apartments <span class="itab-n">{{ adminStore.inspect.apartments.length }}</span>
+            </button>
+            <button :class="['itab', { active: inspectTab === 'guests' }]" @click="inspectTab = 'guests'">
+              Guests <span class="itab-n">{{ adminStore.inspect.guests.length }}</span>
+            </button>
+          </div>
+
+          <div class="inspect-list">
+            <!-- Bookings -->
+            <template v-if="inspectTab === 'bookings'">
+              <div v-if="!adminStore.inspect.bookings.length" class="text-muted text-sm empty-pad">No bookings.</div>
+              <div v-for="b in adminStore.inspect.bookings" :key="b.id" class="inspect-row">
+                <div class="ir-main">
+                  <div class="ir-title">{{ b.guestName || '—' }}</div>
+                  <div class="ir-sub">{{ aptNameFor(b.apartmentId) }} · {{ b.checkIn }} → {{ b.checkOut }}</div>
+                </div>
+                <div class="ir-right">
+                  <span v-if="b.status === 'cancelled'" class="badge badge-red">cancelled</span>
+                  <span v-else :class="['badge', payBadge(b.paymentStatus)]">{{ b.paymentStatus }}</span>
+                  <span class="ir-amount">€{{ (b.totalPrice || 0).toLocaleString() }}</span>
+                </div>
+              </div>
+            </template>
+
+            <!-- Apartments -->
+            <template v-else-if="inspectTab === 'apartments'">
+              <div v-if="!adminStore.inspect.apartments.length" class="text-muted text-sm empty-pad">No apartments.</div>
+              <div v-for="a in adminStore.inspect.apartments" :key="a.id" class="inspect-row">
+                <div class="ir-main">
+                  <div class="ir-title">{{ a.name || '—' }}</div>
+                  <div class="ir-sub">{{ a.maxGuests || a.capacity || 1 }} guests · €{{ a.pricePerNight || 0 }}/night</div>
+                </div>
+              </div>
+            </template>
+
+            <!-- Guests -->
+            <template v-else>
+              <div v-if="!adminStore.inspect.guests.length" class="text-muted text-sm empty-pad">No guests.</div>
+              <div v-for="g in adminStore.inspect.guests" :key="g.id" class="inspect-row">
+                <div class="ir-main">
+                  <div class="ir-title">{{ g.fullName || '—' }}</div>
+                  <div class="ir-sub">{{ g.phone || 'no phone' }}{{ g.country ? ' · ' + g.country : '' }}</div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -246,14 +318,35 @@ const actionMsg = ref('')
 
 const notesUser = ref(null)
 const noteText = ref('')
+const inspectTab = ref('bookings')
 
 onMounted(() => {
   adminStore.subscribeInviteCodes()
   adminStore.subscribeUsers()
+  adminStore.loadSuperAdmin()
 })
+
+function isSuper(u) {
+  return !!adminStore.superAdminId && u.id === adminStore.superAdminId
+}
+
+function openInspect(u) {
+  inspectTab.value = 'bookings'
+  adminStore.loadUserData(u)
+}
+function closeInspect() {
+  adminStore.clearInspect()
+}
+function aptNameFor(id) {
+  return adminStore.inspect.apartments.find(a => a.id === id)?.name || '—'
+}
+
+const PAY_BADGES = { unpaid: 'badge-red', deposit_paid: 'badge-amber', partial: 'badge-blue', paid: 'badge-green', cancelled: 'badge-red' }
+function payBadge(s) { return PAY_BADGES[s] || 'badge-amber' }
 
 onUnmounted(() => {
   adminStore.unsubscribeAll()
+  adminStore.clearInspect()
 })
 
 // Platform-wide totals are summed from each account's stored counts — admins see
@@ -620,6 +713,61 @@ function formatDateTime(ts) {
   font-size: 0.8rem; opacity: 0.5; padding: 0.15rem;
 }
 .note-del:hover { opacity: 1; }
+
+/* Inspect (read-only data) modal */
+.inspect-modal {
+  width: 100%;
+  max-width: 620px;
+  max-height: 85vh;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.inspect-state { padding: 2rem; text-align: center; color: var(--text-3); }
+.inspect-tabs { display: flex; gap: 0.4rem; padding: 0.85rem 1.25rem 0; flex-wrap: wrap; }
+.itab {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  transition: all var(--transition);
+}
+.itab:hover { color: var(--text); border-color: var(--border-strong); }
+.itab.active { background: var(--accent-dim); color: var(--accent); border-color: rgba(245,166,35,0.3); }
+.itab-n {
+  background: rgba(255,255,255,0.06);
+  border-radius: 99px;
+  padding: 0 0.4rem;
+  font-size: 0.68rem;
+  min-width: 18px; text-align: center;
+}
+.inspect-list {
+  padding: 0.85rem 1.25rem 1.25rem;
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: 0.5rem;
+}
+.inspect-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  background: var(--bg-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.85rem;
+}
+.ir-main { min-width: 0; }
+.ir-title { font-size: 0.85rem; font-weight: 600; color: var(--text); }
+.ir-sub { font-size: 0.72rem; color: var(--text-3); margin-top: 0.15rem; }
+.ir-right { display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; }
+.ir-amount { font-size: 0.82rem; font-weight: 700; color: var(--accent); white-space: nowrap; }
 
 @media (max-width: 768px) {
   .page { padding: 1rem 1rem 6rem; }

@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import {
   collection, setDoc, updateDoc, deleteDoc, addDoc,
-  doc, query, where, onSnapshot, serverTimestamp
+  doc, getDoc, getDocs, query, where, onSnapshot, serverTimestamp
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuthStore } from './auth'
@@ -24,6 +24,12 @@ export const useAdminStore = defineStore('admin', () => {
   const inviteCodes = ref([])
   const users = ref([])
   const loading = ref(false)
+
+  // uid of the platform's root admin (from /setup) — protected from other admins.
+  const superAdminId = ref(null)
+
+  // Read-only snapshot of one account's data, for the admin support view.
+  const inspect = ref({ user: null, apartments: [], bookings: [], guests: [], loading: false })
 
   // Notes of ONE selected user, loaded on demand from the admin panel.
   const selectedUserNotes = ref([])
@@ -127,12 +133,48 @@ export const useAdminStore = defineStore('admin', () => {
     await deleteDoc(doc(db, 'notes', id))
   }
 
+  // ── super admin + read-only account inspection ──
+  async function loadSuperAdmin() {
+    try {
+      const snap = await getDoc(doc(db, 'meta', 'setup'))
+      superAdminId.value = snap.exists() ? (snap.data().completedBy || null) : null
+    } catch {
+      superAdminId.value = null
+    }
+  }
+
+  async function loadUserData(u) {
+    inspect.value = { user: u, apartments: [], bookings: [], guests: [], loading: true }
+    const forWs = (col) => query(collection(db, col), where('workspaceId', '==', u.id))
+    try {
+      const [aps, bks, gsts] = await Promise.all([
+        getDocs(forWs('apartments')),
+        getDocs(forWs('bookings')),
+        getDocs(forWs('guests'))
+      ])
+      inspect.value = {
+        user: u,
+        apartments: aps.docs.map(d => ({ id: d.id, ...d.data() })),
+        bookings: bks.docs.map(d => ({ id: d.id, ...d.data() })).sort(byCreatedAtDesc),
+        guests: gsts.docs.map(d => ({ id: d.id, ...d.data() })),
+        loading: false
+      }
+    } catch (e) {
+      inspect.value = { user: u, apartments: [], bookings: [], guests: [], loading: false, error: e.message }
+    }
+  }
+
+  function clearInspect() {
+    inspect.value = { user: null, apartments: [], bookings: [], guests: [], loading: false }
+  }
+
   return {
-    inviteCodes, users, loading,
+    inviteCodes, users, loading, superAdminId, inspect,
     selectedUserNotes, selectedUserId,
     subscribeInviteCodes, subscribeUsers, unsubscribeAll,
     createInviteCode, toggleCodeActive, deleteInviteCode, setUserRole,
     setUserDisabled, deleteUser,
-    subscribeUserNotes, unsubscribeUserNotes, addUserNote, deleteUserNote
+    subscribeUserNotes, unsubscribeUserNotes, addUserNote, deleteUserNote,
+    loadSuperAdmin, loadUserData, clearInspect
   }
 })
