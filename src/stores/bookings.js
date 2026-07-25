@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import {
   collection, addDoc, updateDoc, deleteDoc,
-  doc, onSnapshot, query, where, serverTimestamp, increment
+  doc, onSnapshot, query, where, serverTimestamp
 } from 'firebase/firestore'
 import {
   differenceInDays, parseISO, isWithinInterval,
@@ -32,24 +32,36 @@ export const useBookingsStore = defineStore('bookings', () => {
   const bookings = ref([])
   const loading = ref(false)
   let unsubscribe = null
+  let lastCount = null
+
+  // Keeps the denormalized bookingCount on the user doc in sync with reality
+  // (self-healing — fixes any counter drift when the owner loads their data).
+  function syncCount(workspaceId, n) {
+    if (n === lastCount) return
+    lastCount = n
+    updateDoc(doc(db, 'users', workspaceId), { bookingCount: n }).catch(() => {})
+  }
 
   function subscribe() {
     const authStore = useAuthStore()
     if (!authStore.workspaceId) return
+    const workspaceId = authStore.workspaceId
     loading.value = true
     const q = query(
       collection(db, 'bookings'),
-      where('workspaceId', '==', authStore.workspaceId)
+      where('workspaceId', '==', workspaceId)
     )
     unsubscribe = onSnapshot(q, snap => {
       bookings.value = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       loading.value = false
+      syncCount(workspaceId, bookings.value.length)
     })
   }
 
   function unsubscribeAll() {
     if (unsubscribe) { unsubscribe(); unsubscribe = null }
     bookings.value = []
+    lastCount = null
   }
 
   function calculateBooking(checkIn, checkOut, pricePerNight) {
@@ -120,7 +132,7 @@ export const useBookingsStore = defineStore('bookings', () => {
       workspaceId: authStore.workspaceId,
       createdAt: serverTimestamp()
     })
-    await updateDoc(doc(db, 'users', authStore.workspaceId), { bookingCount: increment(1) })
+    // bookingCount is reconciled by the snapshot listener (syncCount).
   }
 
   async function updateBooking(id, data) {
@@ -160,9 +172,8 @@ export const useBookingsStore = defineStore('bookings', () => {
   }
 
   async function deleteBooking(id) {
-    const authStore = useAuthStore()
     await deleteDoc(doc(db, 'bookings', id))
-    await updateDoc(doc(db, 'users', authStore.workspaceId), { bookingCount: increment(-1) })
+    // bookingCount is reconciled by the snapshot listener (syncCount).
   }
 
   async function addPayment(bookingId, { amount, date, type = 'payment', note = '' }) {

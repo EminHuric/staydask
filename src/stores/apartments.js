@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import {
   collection, addDoc, updateDoc, deleteDoc,
-  doc, onSnapshot, query, where, serverTimestamp, increment
+  doc, onSnapshot, query, where, serverTimestamp
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuthStore } from './auth'
@@ -12,26 +12,39 @@ export const useApartmentsStore = defineStore('apartments', () => {
   const apartments = ref([])
   const loading = ref(false)
   let unsubscribe = null
+  let lastCount = null
+
+  // Keeps the denormalized apartmentCount on the user doc in sync with the real
+  // number of documents. Self-healing: fixes any drift (e.g. a counter that went
+  // negative) the moment the owner loads their data. Admins read this counter.
+  function syncCount(workspaceId, n) {
+    if (n === lastCount) return
+    lastCount = n
+    updateDoc(doc(db, 'users', workspaceId), { apartmentCount: n }).catch(() => {})
+  }
 
   function subscribe() {
     const authStore = useAuthStore()
     if (!authStore.workspaceId) return
+    const workspaceId = authStore.workspaceId
 
     loading.value = true
     const q = query(
       collection(db, 'apartments'),
-      where('workspaceId', '==', authStore.workspaceId)
+      where('workspaceId', '==', workspaceId)
     )
 
     unsubscribe = onSnapshot(q, (snap) => {
       apartments.value = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       loading.value = false
+      syncCount(workspaceId, apartments.value.length)
     })
   }
 
   function unsubscribeAll() {
     if (unsubscribe) { unsubscribe(); unsubscribe = null }
     apartments.value = []
+    lastCount = null
   }
 
   async function addApartment(data) {
@@ -41,7 +54,7 @@ export const useApartmentsStore = defineStore('apartments', () => {
       workspaceId: authStore.workspaceId,
       createdAt: serverTimestamp()
     })
-    await updateDoc(doc(db, 'users', authStore.workspaceId), { apartmentCount: increment(1) })
+    // apartmentCount is reconciled by the snapshot listener (syncCount).
   }
 
   async function updateApartment(id, data) {
@@ -49,9 +62,8 @@ export const useApartmentsStore = defineStore('apartments', () => {
   }
 
   async function deleteApartment(id) {
-    const authStore = useAuthStore()
     await deleteDoc(doc(db, 'apartments', id))
-    await updateDoc(doc(db, 'users', authStore.workspaceId), { apartmentCount: increment(-1) })
+    // apartmentCount is reconciled by the snapshot listener (syncCount).
   }
 
   return { apartments, loading, subscribe, unsubscribeAll, addApartment, updateApartment, deleteApartment }

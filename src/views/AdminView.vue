@@ -76,9 +76,9 @@
           </div>
 
           <div class="user-stats">
-            <div class="us"><span class="us-val">{{ u.apartmentCount || 0 }}</span><span class="us-lbl">Apartments</span></div>
-            <div class="us"><span class="us-val">{{ u.bookingCount || 0 }}</span><span class="us-lbl">Bookings</span></div>
-            <div class="us"><span class="us-val">{{ u.guestCount || 0 }}</span><span class="us-lbl">Guests</span></div>
+            <div class="us"><span class="us-val">{{ count(u.apartmentCount) }}</span><span class="us-lbl">Apartments</span></div>
+            <div class="us"><span class="us-val">{{ count(u.bookingCount) }}</span><span class="us-lbl">Bookings</span></div>
+            <div class="us"><span class="us-val">{{ count(u.guestCount) }}</span><span class="us-lbl">Guests</span></div>
             <div class="us"><span class="us-val small">{{ formatDate(u.createdAt) }}</span><span class="us-lbl">Joined</span></div>
           </div>
 
@@ -260,12 +260,15 @@ onUnmounted(() => {
 // aggregate numbers without ever reading anyone's actual apartments/bookings/guests.
 const platformTotals = computed(() =>
   adminStore.users.reduce((acc, u) => {
-    acc.apartments += u.apartmentCount || 0
-    acc.bookings += u.bookingCount || 0
-    acc.guests += u.guestCount || 0
+    acc.apartments += count(u.apartmentCount)
+    acc.bookings += count(u.bookingCount)
+    acc.guests += count(u.guestCount)
     return acc
   }, { apartments: 0, bookings: 0, guests: 0 })
 )
+
+// Counters are denormalized and could momentarily drift negative; never show < 0.
+function count(n) { return Math.max(0, n || 0) }
 
 const usedCodes = computed(() => adminStore.inviteCodes.filter(c => c.usedBy).length)
 const disabledCount = computed(() => adminStore.users.filter(u => u.disabled).length)
