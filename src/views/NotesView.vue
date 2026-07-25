@@ -53,7 +53,7 @@
         </div>
         <div class="note-text">{{ n.text }}</div>
         <button
-          v-if="n.authorId === authStore.user?.uid"
+          v-if="n.authorId === authStore.user?.uid || authStore.isAdmin"
           class="note-del"
           title="Delete note"
           @click="remove(n.id)"
