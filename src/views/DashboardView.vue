@@ -236,9 +236,9 @@ const PAY_BADGES = { unpaid: 'badge-red', deposit_paid: 'badge-amber', partial: 
 function payLabel(s) { return PAY_LABELS[s] || s }
 function payBadge(s) { return PAY_BADGES[s] || 'badge-amber' }
 
-const NOTIF_ICONS = { arrival: '🛬', departure: '🛫', arriving_tomorrow: '🔔', payment_due: '💳', upcoming: '📅' }
-const NOTIF_BADGE_TEXT = { arrival: 'Today', departure: 'Today', arriving_tomorrow: 'Tomorrow', payment_due: 'Unpaid', upcoming: 'This week' }
-const NOTIF_BADGE = { arrival: 'badge-green', departure: 'badge-amber', arriving_tomorrow: 'badge-blue', payment_due: 'badge-red', upcoming: 'badge-blue' }
+const NOTIF_ICONS = { new: '🆕', arrival: '🛬', departure: '🛫', arriving_tomorrow: '🔔', payment_due: '💳', upcoming: '📅' }
+const NOTIF_BADGE_TEXT = { new: 'New', arrival: 'Today', departure: 'Today', arriving_tomorrow: 'Tomorrow', payment_due: 'Unpaid', upcoming: 'This week' }
+const NOTIF_BADGE = { new: 'badge-green', arrival: 'badge-green', departure: 'badge-amber', arriving_tomorrow: 'badge-blue', payment_due: 'badge-red', upcoming: 'badge-blue' }
 
 function notifIcon(t) { return NOTIF_ICONS[t] || '📌' }
 function notifBadgeText(t) { return NOTIF_BADGE_TEXT[t] || '' }
@@ -246,6 +246,7 @@ function notifBadge(t) { return NOTIF_BADGE[t] || 'badge-amber' }
 function notifText(n) {
   const b = n.booking
   const g = b.guestName
+  if (n.type === 'new') return `New reservation from ${g}`
   if (n.type === 'arrival') return `${g} is checking in today`
   if (n.type === 'departure') return `${g} is checking out today`
   if (n.type === 'arriving_tomorrow') return `${g} arrives tomorrow`

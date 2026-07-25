@@ -6,7 +6,7 @@
       <div class="setup-logo">
         <div class="logo-icon">🏠</div>
         <div>
-          <div class="serif" style="font-size:1.6rem; color: var(--text)">StayDesk</div>
+          <div class="serif" style="font-size:1.6rem; color: var(--text)">RMS</div>
           <div class="text-xs text-muted">First-time Setup</div>
         </div>
       </div>
@@ -94,7 +94,7 @@ async function handleSetup() {
       email: form.value.email,
       role: 'admin',
       workspaceId: cred.user.uid,
-      apartmentLimit: null,
+      disabled: false,
       apartmentCount: 0,
       bookingCount: 0,
       guestCount: 0,

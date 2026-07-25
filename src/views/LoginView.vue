@@ -6,8 +6,8 @@
       <div class="login-logo">
         <div class="logo-icon">🏠</div>
         <div>
-          <div class="serif" style="font-size:1.6rem; color: var(--text)">StayDesk</div>
-          <div class="text-xs text-muted">Apartment Management Platform</div>
+          <div class="serif" style="font-size:1.6rem; color: var(--text)">RMS</div>
+          <div class="text-xs text-muted">Reservation Management System</div>
         </div>
       </div>
 

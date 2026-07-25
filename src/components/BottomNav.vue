@@ -38,6 +38,9 @@
           </div>
         </div>
         <div class="sheet-actions">
+          <router-link to="/notes" class="sheet-btn" @click="profileOpen = false">
+            <span>📝</span> Notes
+          </router-link>
           <router-link v-if="authStore.isAdmin" to="/admin" class="sheet-btn" @click="profileOpen = false">
             <span>⚙️</span> Admin Panel
           </router-link>

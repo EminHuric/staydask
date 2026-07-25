@@ -5,8 +5,8 @@
     <aside :class="['sidebar', { open: sidebarOpen }]">
       <div class="sidebar-header">
         <div class="sidebar-logo">
-          <div class="logo-mark">S</div>
-          <span class="logo-name serif">StayDesk</span>
+          <div class="logo-mark">R</div>
+          <span class="logo-name serif">RMS</span>
         </div>
         <button class="icon-close hide-desktop" @click="sidebarOpen = false">✕</button>
       </div>
@@ -49,12 +49,13 @@
           </svg>
         </button>
         <div class="top-bar-brand hide-desktop">
-          <span class="logo-mark-sm">S</span>
-          <span class="serif" style="font-size:.95rem;font-weight:600">StayDesk</span>
+          <span class="logo-mark-sm">R</span>
+          <span class="serif" style="font-size:.95rem;font-weight:600">RMS</span>
         </div>
         <div class="page-title show-desktop">{{ currentPageTitle }}</div>
         <div class="top-bar-right">
           <GlobalSearch />
+          <NotificationsBell />
           <span class="live-badge">● Live</span>
         </div>
       </header>
@@ -75,6 +76,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import GlobalSearch from '@/components/GlobalSearch.vue'
 import BottomNav from '@/components/BottomNav.vue'
+import NotificationsBell from '@/components/NotificationsBell.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -92,15 +94,16 @@ const navItems = [
   { to: '/bookings',   icon: '📋', label: 'Bookings' },
   { to: '/apartments', icon: '🏠', label: 'Apartments' },
   { to: '/guests',     icon: '👥', label: 'Guests' },
+  { to: '/notes',      icon: '📝', label: 'Notes' },
   { to: '/analytics',  icon: '💰', label: 'Analytics' },
 ]
 
 const titles = {
   Dashboard: 'Dashboard', Calendar: 'Booking Calendar',
   Apartments: 'Apartments', Bookings: 'Reservations',
-  Guests: 'Guest CRM', Analytics: 'Analytics & Finance', Admin: 'Admin Panel'
+  Guests: 'Guest CRM', Notes: 'Notes', Analytics: 'Analytics & Finance', Admin: 'Admin Panel'
 }
-const currentPageTitle = computed(() => titles[route.name] || 'StayDesk')
+const currentPageTitle = computed(() => titles[route.name] || 'RMS')
 
 async function handleLogout() {
   await authStore.logout()

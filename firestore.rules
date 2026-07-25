@@ -1,10 +1,10 @@
 rules_version = '2';
 
-// StayDesk — every account is its own fully isolated tenant (own apartments/
+// RMS (Reservation Management System) — every account is its own fully isolated tenant (own apartments/
 // bookings/guests). "Admin" is a platform-wide role: admins manage accounts
-// (invite codes, roles, per-account apartment limits) but cannot read anyone
-// else's actual business data — only the denormalized usage counters each
-// account maintains on its own user doc.
+// (invite codes, roles, enabling/disabling and deleting users) but cannot read
+// anyone else's actual business data — only the denormalized usage counters
+// each account maintains on its own user doc.
 // Deploy with: firebase deploy --only firestore:rules
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -25,6 +25,13 @@ service cloud.firestore {
     // Every collection of business data is scoped to its owner's own uid.
     function isOwner(data) {
       return isSignedIn() && data.workspaceId == request.auth.uid;
+    }
+
+    // Owner who has NOT been disabled by an admin. Used to gate writes so a
+    // disabled (or deleted) account can never modify data even with a live token.
+    // .get(...) keeps this safe for accounts created before the field existed.
+    function isActiveOwner(data) {
+      return isOwner(data) && myProfile().get('disabled', false) != true;
     }
 
     function unchanged(field) {
@@ -60,14 +67,17 @@ service cloud.firestore {
           (request.resource.data.role == 'admin' && !exists(/databases/$(database)/documents/meta/setup))
         );
 
-      // Anyone may update their own usage counters; only admins may change
-      // someone's role or apartment limit. workspaceId can never change.
+      // A user may update their own usage counters but never their own role or
+      // disabled flag; only an admin may change roles or enable/disable accounts.
+      // workspaceId can never change. .get(...) tolerates docs without 'disabled'.
       allow update: if isSignedIn() && unchanged('workspaceId') && (
-        (request.auth.uid == userId && unchanged('role') && unchanged('apartmentLimit')) ||
+        (request.auth.uid == userId && unchanged('role') &&
+          request.resource.data.get('disabled', false) == resource.data.get('disabled', false)) ||
         isAdmin()
       );
 
-      allow delete: if false;
+      // Only admins may remove an account.
+      allow delete: if isAdmin();
     }
 
     // ── inviteCodes ── (doc ID == the code itself; admin-managed platform-wide)
@@ -94,25 +104,48 @@ service cloud.firestore {
     }
 
     // ── private, per-account business data ──
+    // Reads are scoped to the owner (cheap). Writes additionally require the
+    // account to be active, so a disabled user can't keep changing data.
     match /apartments/{id} {
       allow read: if isOwner(resource.data);
-      allow create: if isOwner(request.resource.data);
-      allow update: if isOwner(resource.data) && unchanged('workspaceId');
-      allow delete: if isOwner(resource.data);
+      allow create: if isActiveOwner(request.resource.data);
+      allow update: if isActiveOwner(resource.data) && unchanged('workspaceId');
+      allow delete: if isActiveOwner(resource.data);
     }
 
     match /bookings/{id} {
       allow read: if isOwner(resource.data);
-      allow create: if isOwner(request.resource.data);
-      allow update: if isOwner(resource.data) && unchanged('workspaceId');
-      allow delete: if isOwner(resource.data);
+      allow create: if isActiveOwner(request.resource.data);
+      allow update: if isActiveOwner(resource.data) && unchanged('workspaceId');
+      allow delete: if isActiveOwner(resource.data);
     }
 
     match /guests/{id} {
       allow read: if isOwner(resource.data);
-      allow create: if isOwner(request.resource.data);
-      allow update: if isOwner(resource.data) && unchanged('workspaceId');
-      allow delete: if isOwner(resource.data);
+      allow create: if isActiveOwner(request.resource.data);
+      allow update: if isActiveOwner(resource.data) && unchanged('workspaceId');
+      allow delete: if isActiveOwner(resource.data);
+    }
+
+    // ── notes ── (a private channel between an account and platform admins)
+    // The workspace owner and any admin can read them. The owner may write notes
+    // in their own workspace; an admin may write notes into any workspace (e.g.
+    // to leave a message for that user). A user can delete only notes they wrote;
+    // an admin can delete any.
+    match /notes/{id} {
+      allow read: if isSignedIn() && (isOwner(resource.data) || isAdmin());
+
+      allow create: if isSignedIn() &&
+        request.resource.data.workspaceId is string &&
+        request.resource.data.text is string && (
+          (isActiveOwner(request.resource.data) && request.resource.data.authorId == request.auth.uid) ||
+          isAdmin()
+        );
+
+      allow update, delete: if isSignedIn() && (
+        (isOwner(resource.data) && resource.data.authorId == request.auth.uid) ||
+        isAdmin()
+      );
     }
   }
 }

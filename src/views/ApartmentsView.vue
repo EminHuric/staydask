@@ -5,21 +5,19 @@
       <div class="page-header-text">
         <h1>Apartments</h1>
         <p class="text-muted text-sm mt-2">
-          {{ apartments.length }}{{ apartmentsStore.limit != null ? ` / ${apartmentsStore.limit}` : '' }}
+          {{ apartments.length }}
           apartment{{ apartments.length !== 1 ? 's' : '' }} in your workspace
         </p>
       </div>
-      <button class="btn btn-primary add-btn" :disabled="atLimit" :title="atLimit ? limitMessage : ''" @click="openAdd">+ Add Apartment</button>
+      <button class="btn btn-primary add-btn" @click="openAdd">+ Add Apartment</button>
     </div>
-
-    <p v-if="atLimit" class="limit-banner">{{ limitMessage }}</p>
 
     <!-- Empty state -->
     <div v-if="apartments.length === 0 && !loading" class="empty-card">
       <div class="empty-icon">🏠</div>
       <h3>No apartments yet</h3>
       <p class="text-muted text-sm">Add your first apartment to start managing bookings.</p>
-      <button class="btn btn-primary mt-4" :disabled="atLimit" @click="openAdd">+ Add Apartment</button>
+      <button class="btn btn-primary mt-4" @click="openAdd">+ Add Apartment</button>
     </div>
 
     <!-- Apartments grid -->
@@ -250,8 +248,6 @@ const bookingsStore = useBookingsStore()
 
 const apartments = computed(() => apartmentsStore.apartments)
 const loading = computed(() => apartmentsStore.loading)
-const atLimit = computed(() => apartmentsStore.limit != null && apartments.value.length >= apartmentsStore.limit)
-const limitMessage = computed(() => `You've reached your apartment limit (${apartmentsStore.limit}). Ask your admin to raise it.`)
 const formError = ref('')
 const thisYear = new Date().getFullYear()
 const today = startOfDay(new Date())
@@ -353,7 +349,6 @@ const defaultForm = () => ({
 const form = ref(defaultForm())
 
 function openAdd() {
-  if (atLimit.value) return
   editing.value = null
   form.value = defaultForm()
   formError.value = ''

@@ -1,10 +1,11 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import {
-  collection, setDoc, updateDoc,
-  doc, onSnapshot, serverTimestamp
+  collection, setDoc, updateDoc, deleteDoc, addDoc,
+  doc, query, where, onSnapshot, serverTimestamp
 } from 'firebase/firestore'
 import { db } from '../firebase'
+import { useAuthStore } from './auth'
 
 // Sorts newest-first client-side (avoids needing a composite index).
 function byCreatedAtDesc(a, b) {
@@ -17,14 +18,20 @@ function generateCode(length = 8) {
 }
 
 // Platform-wide account management. Admins can see every account (for invite
-// codes, roles, and per-account apartment limits) but never anyone's actual
-// apartments/bookings/guests — those stay isolated to each account.
+// codes, roles, enabling/disabling and deleting users) but never anyone's
+// actual apartments/bookings/guests — those stay isolated to each account.
 export const useAdminStore = defineStore('admin', () => {
   const inviteCodes = ref([])
   const users = ref([])
   const loading = ref(false)
+
+  // Notes of ONE selected user, loaded on demand from the admin panel.
+  const selectedUserNotes = ref([])
+  const selectedUserId = ref(null)
+
   let unsubCodes = null
   let unsubUsers = null
+  let unsubUserNotes = null
 
   function subscribeInviteCodes() {
     loading.value = true
@@ -43,6 +50,7 @@ export const useAdminStore = defineStore('admin', () => {
   function unsubscribeAll() {
     if (unsubCodes) { unsubCodes(); unsubCodes = null }
     if (unsubUsers) { unsubUsers(); unsubUsers = null }
+    unsubscribeUserNotes()
     inviteCodes.value = []
     users.value = []
   }
@@ -70,15 +78,57 @@ export const useAdminStore = defineStore('admin', () => {
     await updateDoc(doc(db, 'users', userId), { role: role === 'admin' ? 'admin' : 'user' })
   }
 
-  async function setUserLimit(userId, value) {
-    await updateDoc(doc(db, 'users', userId), {
-      apartmentLimit: value == null || value === '' ? null : Number(value)
+  // Reversible block: disabled users keep all their data but are refused entry
+  // (enforced in the auth store on login and by the Firestore security rules).
+  async function setUserDisabled(userId, disabled) {
+    await updateDoc(doc(db, 'users', userId), { disabled: !!disabled })
+  }
+
+  // Removes the account: deletes the user's profile so they can no longer sign
+  // in. Their private business documents become permanently orphaned (no one
+  // can read data whose workspaceId belongs to a profile that no longer exists).
+  async function deleteUser(userId) {
+    await deleteDoc(doc(db, 'users', userId))
+  }
+
+  // ── Notes for a single user (admin ↔ that user channel) ──
+  function subscribeUserNotes(userId) {
+    unsubscribeUserNotes()
+    selectedUserId.value = userId
+    const q = query(collection(db, 'notes'), where('workspaceId', '==', userId))
+    unsubUserNotes = onSnapshot(q, snap => {
+      selectedUserNotes.value = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort(byCreatedAtDesc)
     })
+  }
+
+  function unsubscribeUserNotes() {
+    if (unsubUserNotes) { unsubUserNotes(); unsubUserNotes = null }
+    selectedUserNotes.value = []
+    selectedUserId.value = null
+  }
+
+  async function addUserNote(userId, text) {
+    const authStore = useAuthStore()
+    await addDoc(collection(db, 'notes'), {
+      workspaceId: userId,
+      text: text.trim(),
+      authorId: authStore.user?.uid || null,
+      authorName: authStore.userProfile?.username || 'Admin',
+      authorRole: 'admin',
+      createdAt: serverTimestamp()
+    })
+  }
+
+  async function deleteUserNote(id) {
+    await deleteDoc(doc(db, 'notes', id))
   }
 
   return {
     inviteCodes, users, loading,
+    selectedUserNotes, selectedUserId,
     subscribeInviteCodes, subscribeUsers, unsubscribeAll,
-    createInviteCode, toggleCodeActive, setUserRole, setUserLimit
+    createInviteCode, toggleCodeActive, setUserRole,
+    setUserDisabled, deleteUser,
+    subscribeUserNotes, unsubscribeUserNotes, addUserNote, deleteUserNote
   }
 })

@@ -25,6 +25,7 @@ const routes = [
       { path: 'bookings', name: 'Bookings', component: () => import('@/views/BookingsView.vue') },
       { path: 'apartments', name: 'Apartments', component: () => import('@/views/ApartmentsView.vue') },
       { path: 'guests', name: 'Guests', component: () => import('@/views/GuestsView.vue') },
+      { path: 'notes', name: 'Notes', component: () => import('@/views/NotesView.vue') },
       { path: 'analytics', name: 'Analytics', component: () => import('@/views/AnalyticsView.vue') },
       {
         path: 'admin',

@@ -24,13 +24,37 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = computed(() => userProfile.value?.role === 'admin')
   const workspaceId = computed(() => userProfile.value?.workspaceId || user.value?.uid)
 
+  // Why an account may be denied access: its profile was deleted by an admin
+  // ('removed'), or an admin flipped the disabled flag ('disabled'). Returns
+  // null when the account is allowed in.
+  function accountBlockReason() {
+    if (!userProfile.value) return 'removed'
+    if (userProfile.value.disabled === true) return 'disabled'
+    return null
+  }
+
+  function blockMessage(reason) {
+    return reason === 'disabled'
+      ? 'Your account has been disabled. Please contact your administrator.'
+      : 'This account no longer exists. Please contact your administrator.'
+  }
+
   // Listen to auth state
   function init() {
     return new Promise((resolve) => {
       onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
-          user.value = firebaseUser
           await loadUserProfile(firebaseUser.uid)
+          const reason = accountBlockReason()
+          if (reason) {
+            // Disabled or removed accounts are signed straight back out.
+            await signOut(auth)
+            user.value = null
+            userProfile.value = null
+            error.value = blockMessage(reason)
+          } else {
+            user.value = firebaseUser
+          }
         } else {
           user.value = null
           userProfile.value = null
@@ -42,11 +66,8 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function loadUserProfile(uid) {
-    const docRef = doc(db, 'users', uid)
-    const snap = await getDoc(docRef)
-    if (snap.exists()) {
-      userProfile.value = { id: snap.id, ...snap.data() }
-    }
+    const snap = await getDoc(doc(db, 'users', uid))
+    userProfile.value = snap.exists() ? { id: snap.id, ...snap.data() } : null
   }
 
   // Login with email + password
@@ -54,8 +75,16 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
     try {
       const cred = await signInWithEmailAndPassword(auth, email, password)
-      user.value = cred.user
       await loadUserProfile(cred.user.uid)
+      const reason = accountBlockReason()
+      if (reason) {
+        await signOut(auth)
+        user.value = null
+        userProfile.value = null
+        error.value = blockMessage(reason)
+        return { success: false, error: error.value }
+      }
+      user.value = cred.user
       return { success: true }
     } catch (e) {
       error.value = 'Invalid email or password.'
@@ -96,7 +125,7 @@ export const useAuthStore = defineStore('auth', () => {
         email,
         role: codeData.role === 'admin' ? 'admin' : 'user',
         workspaceId: cred.user.uid,
-        apartmentLimit: null,
+        disabled: false,
         apartmentCount: 0,
         bookingCount: 0,
         guestCount: 0,

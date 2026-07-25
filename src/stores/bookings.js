@@ -239,9 +239,12 @@ export const useBookingsStore = defineStore('bookings', () => {
     const todayStr = format(today, 'yyyy-MM-dd')
     const tomorrowStr = format(new Date(today.getTime() + 86400000), 'yyyy-MM-dd')
     const in7 = new Date(today.getTime() + 7 * 86400000)
+    const newCutoff = Date.now() - 2 * 86400000 // reservations added in the last 48h
     const notes = []
     bookings.value.forEach(b => {
       if (b.status === 'cancelled') return
+      const createdMs = b.createdAt?.toMillis?.() || 0
+      if (createdMs && createdMs >= newCutoff) notes.push({ type: 'new', booking: b })
       if (b.checkIn === todayStr) notes.push({ type: 'arrival', booking: b })
       if (b.checkOut === todayStr) notes.push({ type: 'departure', booking: b })
       if (b.checkIn === tomorrowStr) notes.push({ type: 'arriving_tomorrow', booking: b })
@@ -255,7 +258,9 @@ export const useBookingsStore = defineStore('bookings', () => {
         notes.push({ type: 'upcoming', booking: b })
       }
     })
-    return notes
+    // Most actionable first: fresh bookings, then today's movements, then upcoming.
+    const order = { new: 0, arrival: 1, arriving_tomorrow: 2, payment_due: 3, departure: 4, upcoming: 5 }
+    return notes.sort((a, b) => (order[a.type] ?? 9) - (order[b.type] ?? 9))
   })
 
   return {
