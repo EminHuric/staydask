@@ -85,7 +85,7 @@
           <div v-if="resetError" class="error-msg mt-2">{{ resetError }}</div>
         </template>
         <p v-else class="text-xs" style="color: var(--green)">
-          ✓ Reset link sent — check your inbox.
+          ✓ Reset link sent — check your inbox and spam folder.
         </p>
       </div>
 

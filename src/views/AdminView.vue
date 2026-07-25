@@ -325,7 +325,7 @@ async function removeUser(u) {
 async function resetUserPassword(u) {
   const res = await authStore.resetPassword(u.email)
   flash(res.success
-    ? `Password reset email sent to ${u.email}.`
+    ? `Reset link sent to ${u.email} — tell them to check the spam folder too.`
     : (res.error || 'Could not send reset email.'))
 }
 
