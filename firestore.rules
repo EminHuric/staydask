@@ -4,8 +4,8 @@ rules_version = '2';
 // apartments/bookings/guests); regular users can never see each other's data.
 // "Admin" is a platform-wide role: admins manage accounts (invite codes, roles,
 // enabling/disabling and deleting users) and may READ any account's data for
-// support, but can never WRITE another account's data. The owner account
-// (isProtectedAdmin, by email) can't be disabled/demoted/deleted by other admins.
+// support, but can never WRITE another account's data. The owner (by email) and
+// any "main admin" it designates are protected from other (regular) admins.
 // Deploy with: firebase deploy --only firestore:rules
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -23,12 +23,21 @@ service cloud.firestore {
       return isSignedIn() && myProfile().role == 'admin';
     }
 
-    // The protected root account, identified by email so it always matches the
-    // real owner regardless of the /setup marker. Other admins can never
-    // disable, demote or delete this account. To change the owner, edit the
-    // email here (and in AdminView's SUPER_ADMIN_EMAIL).
-    function isProtectedAdmin(userData) {
+    // The bootstrap owner — hardcoded by email so it always matches the real
+    // owner and can never be locked out. To change it, edit the email here and
+    // in AdminView's OWNER_EMAIL.
+    function isOwnerEmail(userData) {
       return userData.get('email', '').lower() == 'emynbusiness@gmail.com';
+    }
+
+    // "Main" admins are protected co-owners: the bootstrap owner, plus any admin
+    // a main admin has granted mainAdmin:true. Only a main admin can manage or
+    // grant/revoke other main admins.
+    function isMainAdmin(userData) {
+      return isOwnerEmail(userData) || userData.get('mainAdmin', false) == true;
+    }
+    function iAmMainAdmin() {
+      return isAdmin() && isMainAdmin(myProfile());
     }
 
     // Every collection of business data is scoped to its owner's own uid.
@@ -76,18 +85,29 @@ service cloud.firestore {
           (request.resource.data.role == 'admin' && !exists(/databases/$(database)/documents/meta/setup))
         );
 
-      // A user may update their own usage counters but never their own role or
-      // disabled flag; only an admin may change roles or enable/disable accounts.
-      // No admin may flip the super admin's role/disabled except the super admin.
-      // workspaceId can never change. .get(...) tolerates docs without 'disabled'.
-      allow update: if isSignedIn() && unchanged('workspaceId') && (
-        (request.auth.uid == userId && unchanged('role') &&
-          request.resource.data.get('disabled', false) == resource.data.get('disabled', false)) ||
-        (isAdmin() && !isProtectedAdmin(resource.data))
-      );
+      // workspaceId never changes. Only a main admin may set/clear the mainAdmin
+      // flag. Then either: (self) update your own counters — and an admin who is
+      // not the owner may also step down by changing their own role; or (admin)
+      // manage another account, but never the owner, and a main admin only if you
+      // are one. .get(...) tolerates docs created before a field existed.
+      allow update: if isSignedIn() && unchanged('workspaceId')
+        && (request.resource.data.get('mainAdmin', false) == resource.data.get('mainAdmin', false) || iAmMainAdmin())
+        && (
+          (request.auth.uid == userId
+            && (unchanged('role') || (isAdmin() && !isOwnerEmail(resource.data)))
+            && request.resource.data.get('disabled', false) == resource.data.get('disabled', false))
+          ||
+          (isAdmin() && request.auth.uid != userId
+            && !isOwnerEmail(resource.data)
+            && (!isMainAdmin(resource.data) || iAmMainAdmin()))
+        );
 
-      // Only admins may remove an account, and the protected owner can never be removed.
-      allow delete: if isAdmin() && !isProtectedAdmin(resource.data);
+      // The owner can never be deleted. An admin may delete themselves, or delete
+      // another account (a main admin only when the remover is also a main admin).
+      allow delete: if isSignedIn() && !isOwnerEmail(resource.data) && (
+        (request.auth.uid == userId && isAdmin()) ||
+        (isAdmin() && request.auth.uid != userId && (!isMainAdmin(resource.data) || iAmMainAdmin()))
+      );
     }
 
     // ── inviteCodes ── (doc ID == the code itself; admin-managed platform-wide)

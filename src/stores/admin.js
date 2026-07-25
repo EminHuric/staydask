@@ -85,7 +85,16 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   async function setUserRole(userId, role) {
-    await updateDoc(doc(db, 'users', userId), { role: role === 'admin' ? 'admin' : 'user' })
+    const r = role === 'admin' ? 'admin' : 'user'
+    const patch = { role: r }
+    if (r === 'user') patch.mainAdmin = false // a non-admin can't stay a main admin
+    await updateDoc(doc(db, 'users', userId), patch)
+  }
+
+  // Grant/revoke "main admin" (protected co-owner) status. Rules only let an
+  // existing main admin do this.
+  async function setUserMainAdmin(userId, value) {
+    await updateDoc(doc(db, 'users', userId), { mainAdmin: !!value })
   }
 
   // Reversible block: disabled users keep all their data but are refused entry
@@ -173,7 +182,7 @@ export const useAdminStore = defineStore('admin', () => {
     selectedUserNotes, selectedUserId,
     subscribeInviteCodes, subscribeUsers, unsubscribeAll,
     createInviteCode, toggleCodeActive, deleteInviteCode, setUserRole,
-    setUserDisabled, deleteUser,
+    setUserMainAdmin, setUserDisabled, deleteUser,
     subscribeUserNotes, unsubscribeUserNotes, addUserNote, deleteUserNote,
     loadSuperAdmin, loadUserData, clearInspect
   }

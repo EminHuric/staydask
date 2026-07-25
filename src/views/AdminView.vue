@@ -70,7 +70,7 @@
               <div class="user-email">{{ u.email }}</div>
             </div>
             <div class="user-badges">
-              <span v-if="isSuper(u)" class="badge badge-amber">★ Main admin</span>
+              <span v-if="isMain(u)" class="badge badge-amber">★ {{ isOwner(u) ? 'Owner' : 'Main admin' }}</span>
               <span :class="['badge', u.role === 'admin' ? 'badge-amber' : 'badge-blue']">{{ u.role || 'user' }}</span>
               <span :class="['badge', u.disabled ? 'badge-red' : 'badge-green']">{{ u.disabled ? 'Disabled' : 'Active' }}</span>
             </div>
@@ -86,10 +86,34 @@
           <div class="user-actions">
             <button class="btn btn-ghost btn-sm" @click="openInspect(u)">👁 View data</button>
             <button class="btn btn-ghost btn-sm" @click="openNotes(u)">📝 Notes</button>
-            <template v-if="u.id !== authStore.user?.uid && !isSuper(u)">
+
+            <!-- Your own account -->
+            <template v-if="u.id === authStore.user?.uid">
+              <span v-if="isOwner(u)" class="text-xs text-muted self-note">Your account — owner (protected).</span>
+              <template v-else>
+                <span class="text-xs text-muted self-note">This is you.</span>
+                <button class="btn btn-ghost btn-sm" @click="stepDown(u)">Step down to user</button>
+              </template>
+            </template>
+
+            <!-- A protected account you can't manage -->
+            <template v-else-if="isMain(u) && !iAmMain">
+              <span class="text-xs text-muted self-note">{{ isOwner(u) ? 'Owner' : 'Main admin' }} — protected account.</span>
+            </template>
+            <template v-else-if="isOwner(u)">
+              <span class="text-xs text-muted self-note">Owner — protected account.</span>
+            </template>
+
+            <!-- Manageable account -->
+            <template v-else>
               <button class="btn btn-ghost btn-sm" @click="toggleRole(u)">
                 {{ u.role === 'admin' ? 'Demote' : 'Make admin' }}
               </button>
+              <button
+                v-if="iAmMain && u.role === 'admin'"
+                class="btn btn-ghost btn-sm"
+                @click="toggleMain(u)"
+              >{{ u.mainAdmin ? 'Remove main' : 'Make main' }}</button>
               <button class="btn btn-ghost btn-sm" @click="resetUserPassword(u)">Reset password</button>
               <button
                 class="btn btn-sm"
@@ -98,8 +122,6 @@
               >{{ u.disabled ? 'Enable' : 'Disable' }}</button>
               <button class="btn btn-danger btn-sm" @click="removeUser(u)">Delete</button>
             </template>
-            <span v-else-if="u.id === authStore.user?.uid" class="text-xs text-muted self-note">This is your account.</span>
-            <span v-else class="text-xs text-muted self-note">Main admin — protected account.</span>
           </div>
         </div>
       </div>
@@ -303,12 +325,14 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { format } from 'date-fns'
 import { useAdminStore } from '@/stores/admin'
 import { useAuthStore } from '@/stores/auth'
 
 const adminStore = useAdminStore()
 const authStore = useAuthStore()
+const router = useRouter()
 
 const newCode = ref('')
 const copied = ref(false)
@@ -324,13 +348,38 @@ const inspectTab = ref('bookings')
 onMounted(() => {
   adminStore.subscribeInviteCodes()
   adminStore.subscribeUsers()
-  adminStore.loadSuperAdmin()
 })
 
-// The protected owner account — must match isProtectedAdmin() in firestore.rules.
-const SUPER_ADMIN_EMAIL = 'emynbusiness@gmail.com'
-function isSuper(u) {
-  return (u.email || '').toLowerCase() === SUPER_ADMIN_EMAIL
+// The protected owner account — must match isOwnerEmail() in firestore.rules.
+const OWNER_EMAIL = 'emynbusiness@gmail.com'
+function isOwner(u) { return (u.email || '').toLowerCase() === OWNER_EMAIL }
+function isMain(u) { return isOwner(u) || u.mainAdmin === true }
+const iAmMain = computed(() =>
+  (authStore.userProfile?.email || '').toLowerCase() === OWNER_EMAIL ||
+  authStore.userProfile?.mainAdmin === true
+)
+
+async function toggleMain(u) {
+  const next = !u.mainAdmin
+  if (next && !confirm(`Make ${u.username || u.email} a MAIN admin? Main admins are protected and can manage other admins.`)) return
+  if (!next && !confirm(`Remove main-admin status from ${u.username || u.email}?`)) return
+  try {
+    await adminStore.setUserMainAdmin(u.id, next)
+    flash(next ? `${u.username || u.email} is now a main admin.` : `${u.username || u.email} is no longer a main admin.`)
+  } catch (e) {
+    flash(`Could not change main-admin status: ${errText(e)}`, true)
+  }
+}
+
+async function stepDown(u) {
+  if (!confirm('Step down from admin? You become a regular user and lose the Admin panel. Your data stays.')) return
+  try {
+    await adminStore.setUserRole(u.id, 'user')
+    await authStore.loadUserProfile(authStore.user.uid)
+    router.push('/calendar')
+  } catch (e) {
+    flash(`Could not step down: ${errText(e)}`, true)
+  }
 }
 
 function openInspect(u) {
