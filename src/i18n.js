@@ -39,6 +39,14 @@ const SR = {
   'User': 'Korisnik',
   'Live': 'Uživo',
 
+  // ── Account switcher ───────────────────────────────────────────────
+  'Switch account': 'Promeni nalog',
+  '+ Add account': '+ Dodaj nalog',
+  'Switching…': 'Prebacujem…',
+  'Remove account from this device': 'Ukloni nalog sa ovog uređaja',
+  'Password for {email} changed — account removed. Sign in again to add it.':
+    'Lozinka za {email} je promenjena — nalog je uklonjen. Prijavi se ponovo da ga dodaš.',
+
   // ── Common ─────────────────────────────────────────────────────────
   'Edit': 'Izmeni',
   'Delete': 'Obriši',

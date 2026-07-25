@@ -37,6 +37,10 @@
             <div class="sheet-role">{{ authStore.isAdmin ? t('Administrator') : t('Workspace Owner') }}</div>
           </div>
         </div>
+        <div class="sheet-accounts">
+          <div class="sheet-section-label">{{ t('Switch account') }}</div>
+          <AccountSwitcher :show-current="false" @add="profileOpen = false" />
+        </div>
         <div class="sheet-lang-row">
           <LanguageToggle />
         </div>
@@ -65,6 +69,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useBookingsStore } from '@/stores/bookings'
 import LanguageToggle from '@/components/LanguageToggle.vue'
+import AccountSwitcher from '@/components/AccountSwitcher.vue'
 import { t } from '@/i18n'
 
 const route = useRoute()
@@ -288,6 +293,11 @@ async function handleLogout() {
   margin-top: 2px;
 }
 
+.sheet-accounts { padding: 0 0 0.75rem; border-bottom: 1px solid var(--border); margin-bottom: 0.75rem; }
+.sheet-section-label {
+  font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-3); margin-bottom: 0.5rem;
+}
 .sheet-lang-row { display: flex; justify-content: center; padding: 0 0 0.75rem; }
 .sheet-actions { display: flex; flex-direction: column; gap: 0.4rem; }
 

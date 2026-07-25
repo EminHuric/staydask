@@ -13,6 +13,7 @@ import {
   doc, getDoc, setDoc, updateDoc, serverTimestamp
 } from 'firebase/firestore'
 import { auth, db } from '../firebase'
+import { rememberAccount, forgetAccount, getAccount, revealSecret } from '../savedAccounts'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
@@ -96,10 +97,33 @@ export const useAuthStore = defineStore('auth', () => {
         return { success: false, error: error.value }
       }
       user.value = cred.user
+      rememberAccount({
+        uid: cred.user.uid,
+        email,
+        username: userProfile.value?.username,
+        role: userProfile.value?.role,
+        password
+      })
       return { success: true }
     } catch (e) {
       error.value = 'Invalid email or password.'
-      return { success: false, error: error.value }
+      return { success: false, error: error.value, code: e.code }
+    }
+  }
+
+  // Switch to another account saved on this device (Instagram-style). Signs in
+  // with the stored credentials; the caller reloads the app so every store
+  // re-subscribes for the new workspace. If the stored password no longer works
+  // (e.g. it was changed), the account is dropped from this device.
+  async function switchAccount(uid) {
+    const acc = getAccount(uid)
+    if (!acc) return { success: false, error: 'Account not found.' }
+    try {
+      await signInWithEmailAndPassword(auth, acc.email, revealSecret(acc.secret))
+      return { success: true }
+    } catch (e) {
+      forgetAccount(uid)
+      return { success: false, removed: true, email: acc.email, code: e.code }
     }
   }
 
@@ -138,6 +162,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       user.value = cred.user
       await loadUserProfile(cred.user.uid)
+      rememberAccount({ uid: cred.user.uid, email, username: name, role: 'admin', password })
       return { success: true }
     } catch (e) {
       error.value = e.code === 'auth/email-already-in-use'
@@ -200,6 +225,13 @@ export const useAuthStore = defineStore('auth', () => {
 
       user.value = cred.user
       await loadUserProfile(cred.user.uid)
+      rememberAccount({
+        uid: cred.user.uid,
+        email,
+        username,
+        role: codeData.role === 'admin' ? 'admin' : 'user',
+        password
+      })
       return { success: true }
     } catch (e) {
       if (e.code === 'auth/email-already-in-use') {
@@ -236,6 +268,6 @@ export const useAuthStore = defineStore('auth', () => {
     user, userProfile, loading, error,
     isAuthenticated, isAdmin, workspaceId,
     init, loginWithCredentials, loginWithInviteCode, createFirstAdmin,
-    resetPassword, logout, loadUserProfile
+    resetPassword, logout, loadUserProfile, switchAccount
   }
 })

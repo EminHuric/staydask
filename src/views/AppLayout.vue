@@ -23,12 +23,16 @@
       </nav>
 
       <div class="sidebar-footer">
-        <div class="user-pill">
+        <button class="user-pill" @click="accountsOpen = !accountsOpen">
           <div class="user-avatar">{{ userInitial }}</div>
           <div class="user-info">
             <div class="user-name">{{ authStore.userProfile?.username || authStore.userProfile?.email || t('User') }}</div>
             <div class="user-role">{{ authStore.isAdmin ? t('Admin') : t('Owner') }}</div>
           </div>
+          <span class="pill-chevron" :class="{ open: accountsOpen }">⌄</span>
+        </button>
+        <div v-if="accountsOpen" class="sidebar-accounts">
+          <AccountSwitcher :show-current="false" />
         </div>
         <div class="sidebar-lang"><LanguageToggle /></div>
         <button class="btn btn-ghost btn-sm logout-btn" @click="handleLogout">{{ t('Sign out') }}</button>
@@ -80,12 +84,14 @@ import GlobalSearch from '@/components/GlobalSearch.vue'
 import BottomNav from '@/components/BottomNav.vue'
 import NotificationsBell from '@/components/NotificationsBell.vue'
 import LanguageToggle from '@/components/LanguageToggle.vue'
+import AccountSwitcher from '@/components/AccountSwitcher.vue'
 import { t } from '@/i18n'
 
 const authStore = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 const sidebarOpen = ref(false)
+const accountsOpen = ref(false)
 
 const userInitial = computed(() => {
   const name = authStore.userProfile?.username || authStore.userProfile?.email || 'U'
@@ -213,7 +219,17 @@ async function handleLogout() {
   padding: 0.5rem;
   border-radius: var(--radius-sm);
   background: var(--bg-3);
+  border: 1px solid transparent;
+  width: 100%;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: border-color 0.15s;
 }
+.user-pill:hover { border-color: var(--border-strong); }
+.pill-chevron { color: var(--text-3); font-size: 0.85rem; transition: transform 0.2s; flex-shrink: 0; }
+.pill-chevron.open { transform: rotate(180deg); }
+.sidebar-accounts { padding: 0.15rem 0; }
 .user-avatar {
   width: 32px; height: 32px;
   background: var(--accent-dim);
