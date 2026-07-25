@@ -57,16 +57,10 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  createUserWithEmailAndPassword,
-  updateProfile
-} from 'firebase/auth'
-import {
-  doc, getDoc, setDoc, serverTimestamp
-} from 'firebase/firestore'
-import { auth, db } from '../firebase'
+import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const loading = ref(false)
 const error = ref('')
 const done = ref(false)
@@ -76,46 +70,18 @@ const form = ref({ name: '', email: '', password: '' })
 async function handleSetup() {
   error.value = ''
   loading.value = true
-  try {
-    // This page only ever works once — after the first admin exists it locks itself.
-    const setupSnap = await getDoc(doc(db, 'meta', 'setup'))
-    if (setupSnap.exists()) {
-      error.value = 'Setup has already been completed. Go to Sign in, or ask your admin for an invite code.'
-      loading.value = false
-      return
-    }
-
-    const cred = await createUserWithEmailAndPassword(auth, form.value.email, form.value.password)
-    await updateProfile(cred.user, { displayName: form.value.name })
-
-    await setDoc(doc(db, 'users', cred.user.uid), {
-      uid: cred.user.uid,
-      username: form.value.name,
-      email: form.value.email,
-      role: 'admin',
-      workspaceId: cred.user.uid,
-      disabled: false,
-      apartmentCount: 0,
-      bookingCount: 0,
-      guestCount: 0,
-      createdAt: serverTimestamp()
-    })
-
-    await setDoc(doc(db, 'meta', 'setup'), {
-      completedBy: cred.user.uid,
-      completedAt: serverTimestamp()
-    })
-
+  const res = await authStore.createFirstAdmin({
+    name: form.value.name,
+    email: form.value.email,
+    password: form.value.password
+  })
+  loading.value = false
+  if (res.success) {
     done.value = true
     setTimeout(() => router.push('/calendar'), 1500)
-  } catch (e) {
-    if (e.code === 'auth/email-already-in-use') {
-      error.value = 'An account with this email already exists. Go to Sign in.'
-    } else {
-      error.value = e.message
-    }
+  } else {
+    error.value = res.error
   }
-  loading.value = false
 }
 </script>
 
