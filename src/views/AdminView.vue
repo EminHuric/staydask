@@ -196,6 +196,17 @@ onUnmounted(() => {
 
 const usedCodes = computed(() => adminStore.inviteCodes.filter(c => c.usedBy).length)
 
+// Platform-wide totals are summed from each account's stored counts — admins see
+// aggregate numbers without ever reading anyone's actual apartments/bookings/guests.
+const platformTotals = computed(() =>
+  adminStore.users.reduce((acc, u) => {
+    acc.apartments += u.apartmentCount || 0
+    acc.bookings += u.bookingCount || 0
+    acc.guests += u.guestCount || 0
+    return acc
+  }, { apartments: 0, bookings: 0, guests: 0 })
+)
+
 async function createCode() {
   const code = await adminStore.createInviteCode('', newCodeIsAdmin.value ? 'admin' : 'user')
   newCode.value = code
