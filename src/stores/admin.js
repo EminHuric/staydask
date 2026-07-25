@@ -74,6 +74,10 @@ export const useAdminStore = defineStore('admin', () => {
     await updateDoc(doc(db, 'inviteCodes', id), { active: !current })
   }
 
+  async function deleteInviteCode(id) {
+    await deleteDoc(doc(db, 'inviteCodes', id))
+  }
+
   async function setUserRole(userId, role) {
     await updateDoc(doc(db, 'users', userId), { role: role === 'admin' ? 'admin' : 'user' })
   }
@@ -127,7 +131,7 @@ export const useAdminStore = defineStore('admin', () => {
     inviteCodes, users, loading,
     selectedUserNotes, selectedUserId,
     subscribeInviteCodes, subscribeUsers, unsubscribeAll,
-    createInviteCode, toggleCodeActive, setUserRole,
+    createInviteCode, toggleCodeActive, deleteInviteCode, setUserRole,
     setUserDisabled, deleteUser,
     subscribeUserNotes, unsubscribeUserNotes, addUserNote, deleteUserNote
   }

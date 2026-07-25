@@ -147,6 +147,7 @@
               class="btn btn-ghost btn-sm"
               @click="adminStore.toggleCodeActive(code.id, code.active)"
             >{{ code.active ? 'Disable' : 'Enable' }}</button>
+            <button class="btn btn-danger btn-sm" @click="removeCode(code)">Delete</button>
           </div>
         </div>
       </div>
@@ -288,6 +289,13 @@ async function createCode() {
   newCode.value = code
   copied.value = false
   newCodeIsAdmin.value = false
+}
+
+async function removeCode(code) {
+  if (!confirm(`Delete invite code ${code.code}? This can't be undone.`)) return
+  if (newCode.value === code.code) newCode.value = ''
+  await adminStore.deleteInviteCode(code.id)
+  flash(`Invite code ${code.code} deleted.`)
 }
 
 async function toggleRole(u) {
