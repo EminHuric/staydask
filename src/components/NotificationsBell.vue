@@ -11,13 +11,13 @@
     <Transition name="drop">
       <div v-if="open" class="bell-panel">
         <div class="bell-header">
-          <span>Notifications</span>
+          <span>{{ t('Notifications') }}</span>
           <span v-if="items.length" class="count-pill">{{ items.length }}</span>
         </div>
 
         <div v-if="items.length === 0" class="bell-empty">
           <span style="font-size:1.4rem">✓</span>
-          <p class="text-muted text-sm">You're all caught up.</p>
+          <p class="text-muted text-sm">{{ t("You're all caught up.") }}</p>
         </div>
 
         <div v-else class="bell-list">
@@ -38,7 +38,7 @@
         </div>
 
         <router-link to="/dashboard" class="bell-footer" @click="open = false">
-          Open dashboard →
+          {{ t('Open dashboard →') }}
         </router-link>
       </div>
     </Transition>
@@ -53,6 +53,7 @@ import { useRouter } from 'vue-router'
 import { format } from 'date-fns'
 import { useBookingsStore } from '@/stores/bookings'
 import { useApartmentsStore } from '@/stores/apartments'
+import { t } from '@/i18n'
 
 const router = useRouter()
 const bookingsStore = useBookingsStore()
@@ -70,18 +71,18 @@ const ICONS = { new: '🆕', arrival: '🛬', departure: '🛫', arriving_tomorr
 const BADGE_TEXT = { new: 'New', arrival: 'Today', departure: 'Today', arriving_tomorrow: 'Tomorrow', payment_due: 'Unpaid', upcoming: 'This week' }
 const BADGE_CLASS = { new: 'badge-green', arrival: 'badge-green', departure: 'badge-amber', arriving_tomorrow: 'badge-blue', payment_due: 'badge-red', upcoming: 'badge-blue' }
 
-function icon(t) { return ICONS[t] || '📌' }
-function badgeText(t) { return BADGE_TEXT[t] || '' }
-function badgeClass(t) { return BADGE_CLASS[t] || 'badge-amber' }
+function icon(type) { return ICONS[type] || '📌' }
+function badgeText(type) { return t(BADGE_TEXT[type] || '') }
+function badgeClass(type) { return BADGE_CLASS[type] || 'badge-amber' }
 function text(n) {
   const b = n.booking
-  const g = b.guestName || 'Guest'
-  if (n.type === 'new') return `New reservation from ${g}`
-  if (n.type === 'arrival') return `${g} is checking in today`
-  if (n.type === 'departure') return `${g} is checking out today`
-  if (n.type === 'arriving_tomorrow') return `${g} arrives tomorrow`
-  if (n.type === 'payment_due') return `${g} — payment pending`
-  if (n.type === 'upcoming') return `${g} arrives on ${fmt(b.checkIn)}`
+  const g = b.guestName || t('Guest')
+  if (n.type === 'new') return t('New reservation from {g}', { g })
+  if (n.type === 'arrival') return t('{g} is checking in today', { g })
+  if (n.type === 'departure') return t('{g} is checking out today', { g })
+  if (n.type === 'arriving_tomorrow') return t('{g} arrives tomorrow', { g })
+  if (n.type === 'payment_due') return t('{g} — payment pending', { g })
+  if (n.type === 'upcoming') return t('{g} arrives on {date}', { g, date: fmt(b.checkIn) })
   return g
 }
 

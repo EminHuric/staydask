@@ -3,33 +3,33 @@
   <div class="page">
     <div class="page-header">
       <div>
-        <h1>Reservations</h1>
-        <p class="text-muted text-sm mt-2">{{ filtered.length }} reservation{{ filtered.length !== 1 ? 's' : '' }}</p>
+        <h1>{{ t('Reservations') }}</h1>
+        <p class="text-muted text-sm mt-2">{{ t('{n} reservations', { n: filtered.length }) }}</p>
       </div>
-      <button class="btn btn-primary" @click="openAdd">+ New Reservation</button>
+      <button class="btn btn-primary" @click="openAdd">{{ t('+ New Reservation') }}</button>
     </div>
 
     <!-- Filters -->
     <div class="filters-bar">
-      <input v-model="search" class="form-input search-input" placeholder="Search guest, ID, apartment…" />
+      <input v-model="search" class="form-input search-input" :placeholder="t('Search guest, ID, apartment…')" />
       <select v-model="filterApt" class="form-input filter-select">
-        <option value="">All Apartments</option>
+        <option value="">{{ t('All Apartments') }}</option>
         <option v-for="apt in apartments" :key="apt.id" :value="apt.id">{{ apt.name }}</option>
       </select>
       <select v-model="filterPayment" class="form-input filter-select">
-        <option value="">All Payment Status</option>
-        <option value="unpaid">Unpaid</option>
-        <option value="deposit_paid">Deposit Paid</option>
-        <option value="partial">Partially Paid</option>
-        <option value="paid">Fully Paid</option>
+        <option value="">{{ t('All Payment Status') }}</option>
+        <option value="unpaid">{{ t('Unpaid') }}</option>
+        <option value="deposit_paid">{{ t('Deposit Paid') }}</option>
+        <option value="partial">{{ t('Partially Paid') }}</option>
+        <option value="paid">{{ t('Fully Paid') }}</option>
       </select>
       <select v-model="filterStatus" class="form-input filter-select">
-        <option value="">All Reservations</option>
-        <option value="active">Active Now</option>
-        <option value="upcoming">Upcoming</option>
-        <option value="past">Past</option>
+        <option value="">{{ t('All Reservations') }}</option>
+        <option value="active">{{ t('Active Now') }}</option>
+        <option value="upcoming">{{ t('Upcoming') }}</option>
+        <option value="past">{{ t('Past') }}</option>
       </select>
-      <button v-if="hasFilter" class="btn btn-ghost btn-sm" @click="clearFilters">Clear</button>
+      <button v-if="hasFilter" class="btn btn-ghost btn-sm" @click="clearFilters">{{ t('Clear') }}</button>
     </div>
 
     <!-- Payment status summary bar -->
@@ -38,84 +38,134 @@
         :class="['summary-chip', s.key, { active: filterPayment === s.key, 'no-filter': s.noFilter }]"
         @click="!s.noFilter && (filterPayment = filterPayment === s.key ? '' : s.key)">
         <span class="chip-count">{{ s.count }}</span>
-        <span class="chip-label">{{ s.label }}</span>
+        <span class="chip-label">{{ t(s.label) }}</span>
       </button>
     </div>
 
     <!-- Empty -->
     <div v-if="filtered.length === 0" class="empty-card">
       <div style="font-size:2rem;margin-bottom:.5rem">📋</div>
-      <p class="text-muted text-sm">No reservations found.</p>
+      <p class="text-muted text-sm">{{ t('No reservations found.') }}</p>
     </div>
 
-    <!-- Table -->
-    <div v-else class="card table-card">
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Guest</th>
-              <th>Apartment</th>
-              <th>Dates</th>
-              <th>Nights</th>
-              <th>Payment</th>
-              <th class="text-right">Total</th>
-              <th class="text-right">Paid</th>
-              <th class="text-right">Owed</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="b in paginated" :key="b.id"
-              @click="openEdit(b)" style="cursor:pointer">
-              <td>
-                <span class="res-id">{{ b.reservationId || '—' }}</span>
-              </td>
-              <td>
-                <div class="font-medium" style="color:var(--text)">{{ b.guestName }}</div>
-                <div class="text-xs text-muted">{{ b.origin || b.phone || '' }}</div>
-                <div v-if="b.tags?.length" class="row-tags">
-                  <span v-for="t in b.tags.slice(0,2)" :key="t" class="mini-tag">{{ tagLabel(t) }}</span>
-                </div>
-              </td>
-              <td>
-                <div class="flex items-center gap-2">
-                  <span class="apt-dot" :style="{ background: aptColor(b.apartmentId) }"></span>
-                  <span>{{ aptName(b.apartmentId) }}</span>
-                </div>
-              </td>
-              <td>
-                <div class="text-sm">{{ formatDate(b.checkIn) }}</div>
-                <div class="text-xs text-muted">→ {{ formatDate(b.checkOut) }}</div>
-              </td>
-              <td class="text-center">{{ b.days }}</td>
-              <td>
-                <span :class="['badge', payBadge(b)]">{{ payLabel(b) }}</span>
-              </td>
-              <td class="text-right font-medium" style="color:var(--text)">€{{ (b.totalPrice||0).toLocaleString() }}</td>
-              <td class="text-right text-green">€{{ (b.totalPaid||0).toLocaleString() }}</td>
-              <td class="text-right" :style="{ color: owed(b) > 0 ? 'var(--red)' : 'var(--text-3)' }">
-                €{{ owed(b).toLocaleString() }}
-              </td>
-              <td>
-                <div class="row-actions" @click.stop>
-                  <button class="btn btn-ghost btn-sm" @click.stop="openPayments(b)">💰</button>
-                  <button class="btn btn-ghost btn-sm" @click.stop="openEdit(b)">Edit</button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    <template v-else>
+      <!-- ── Desktop table ── -->
+      <div class="card table-card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>{{ t('Guest') }}</th>
+                <th>{{ t('Apartment') }}</th>
+                <th>{{ t('Dates') }}</th>
+                <th class="text-center">{{ t('Nights') }}</th>
+                <th>{{ t('Payment') }}</th>
+                <th class="text-right">{{ t('Total') }}</th>
+                <th class="text-right">{{ t('Paid') }}</th>
+                <th class="text-right">{{ t('Owed') }}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="b in paginated" :key="b.id"
+                @click="openEdit(b)" style="cursor:pointer">
+                <td>
+                  <span class="res-id">{{ b.reservationId || '—' }}</span>
+                </td>
+                <td>
+                  <div class="font-medium" style="color:var(--text)">{{ b.guestName }}</div>
+                  <div class="text-xs text-muted">{{ b.origin || b.phone || '' }}</div>
+                  <div v-if="b.tags?.length" class="row-tags">
+                    <span v-for="tg in b.tags.slice(0,2)" :key="tg" class="mini-tag">{{ tagLabel(tg) }}</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="flex items-center gap-2">
+                    <span class="apt-dot" :style="{ background: aptColor(b.apartmentId) }"></span>
+                    <span>{{ aptName(b.apartmentId) }}</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="text-sm">{{ formatDate(b.checkIn) }}</div>
+                  <div class="text-xs text-muted">→ {{ formatDate(b.checkOut) }}</div>
+                </td>
+                <td class="text-center">{{ b.days }}</td>
+                <td>
+                  <span :class="['badge', payBadge(b)]">{{ payLabel(b) }}</span>
+                </td>
+                <td class="text-right font-medium" style="color:var(--text)">€{{ (b.totalPrice||0).toLocaleString() }}</td>
+                <td class="text-right text-green">€{{ (b.totalPaid||0).toLocaleString() }}</td>
+                <td class="text-right" :style="{ color: owed(b) > 0 ? 'var(--red)' : 'var(--text-3)' }">
+                  €{{ owed(b).toLocaleString() }}
+                </td>
+                <td>
+                  <div class="row-actions" @click.stop>
+                    <button class="btn btn-ghost btn-sm" @click.stop="openPayments(b)">💰</button>
+                    <button class="btn btn-ghost btn-sm" @click.stop="openEdit(b)">{{ t('Edit') }}</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination (desktop) -->
+        <div v-if="pageCount > 1" class="pagination">
+          <button class="btn btn-ghost btn-sm" :disabled="page === 1" @click="page--">{{ t('← Prev') }}</button>
+          <span class="text-sm text-muted">{{ page }} / {{ pageCount }}</span>
+          <button class="btn btn-ghost btn-sm" :disabled="page === pageCount" @click="page++">{{ t('Next →') }}</button>
+        </div>
       </div>
 
-      <!-- Pagination -->
-      <div v-if="pageCount > 1" class="pagination">
-        <button class="btn btn-ghost btn-sm" :disabled="page === 1" @click="page--">← Prev</button>
-        <span class="text-sm text-muted">{{ page }} / {{ pageCount }}</span>
-        <button class="btn btn-ghost btn-sm" :disabled="page === pageCount" @click="page++">Next →</button>
+      <!-- ── Mobile cards ── -->
+      <div class="res-cards">
+        <div v-for="b in paginated" :key="b.id" class="res-card" @click="openEdit(b)">
+          <div class="rc-top">
+            <div class="rc-guest">
+              <div class="rc-name">{{ b.guestName }}</div>
+              <div class="rc-apt">
+                <span class="apt-dot" :style="{ background: aptColor(b.apartmentId) }"></span>
+                {{ aptName(b.apartmentId) }}
+              </div>
+            </div>
+            <span :class="['badge', payBadge(b)]">{{ payLabel(b) }}</span>
+          </div>
+
+          <div class="rc-dates">
+            <span>📅 {{ formatDate(b.checkIn) }} → {{ formatDate(b.checkOut) }}</span>
+            <span class="rc-nights">{{ b.days }}n</span>
+          </div>
+
+          <div class="rc-money">
+            <div class="rc-money-item">
+              <span class="rc-money-lbl">{{ t('Total') }}</span>
+              <span class="rc-money-val">€{{ (b.totalPrice||0).toLocaleString() }}</span>
+            </div>
+            <div class="rc-money-item">
+              <span class="rc-money-lbl">{{ t('Paid') }}</span>
+              <span class="rc-money-val text-green">€{{ (b.totalPaid||0).toLocaleString() }}</span>
+            </div>
+            <div class="rc-money-item">
+              <span class="rc-money-lbl">{{ t('Owed') }}</span>
+              <span class="rc-money-val" :style="{ color: owed(b) > 0 ? 'var(--red)' : 'var(--text-3)' }">€{{ owed(b).toLocaleString() }}</span>
+            </div>
+          </div>
+
+          <div class="rc-actions" @click.stop>
+            <button class="btn btn-ghost btn-sm rc-btn" @click.stop="openPayments(b)">💰 {{ t('Payments') }}</button>
+            <button class="btn btn-primary btn-sm rc-btn" @click.stop="openEdit(b)">{{ t('Edit') }}</button>
+          </div>
+        </div>
+
+        <!-- Pagination (mobile) -->
+        <div v-if="pageCount > 1" class="pagination">
+          <button class="btn btn-ghost btn-sm" :disabled="page === 1" @click="page--">{{ t('← Prev') }}</button>
+          <span class="text-sm text-muted">{{ page }} / {{ pageCount }}</span>
+          <button class="btn btn-ghost btn-sm" :disabled="page === pageCount" @click="page++">{{ t('Next →') }}</button>
+        </div>
       </div>
-    </div>
+    </template>
 
     <!-- Booking modal -->
     <BookingModal v-if="showModal" :booking="selectedBooking"
@@ -134,6 +184,7 @@ import { useBookingsStore } from '@/stores/bookings'
 import { useApartmentsStore } from '@/stores/apartments'
 import BookingModal from '@/components/BookingModal.vue'
 import PaymentPanel from '@/components/PaymentPanel.vue'
+import { t } from '@/i18n'
 
 const bookingsStore = useBookingsStore()
 const apartmentsStore = useApartmentsStore()
@@ -160,7 +211,7 @@ const TAGS_MAP = {
   baby_bed: '👶 Baby', pet: '🐾 Pet', special_request: '📝 Special',
   repeat_guest: '🔄 Repeat', long_stay: '📅 Long'
 }
-function tagLabel(v) { return TAGS_MAP[v] || v }
+function tagLabel(v) { return t(TAGS_MAP[v] || v) }
 
 const filtered = computed(() => {
   const today = startOfDay(new Date())
@@ -215,8 +266,8 @@ function owed(b) { return Math.max(0, (b.totalPrice || 0) - (b.totalPaid || 0)) 
 const PAY_LABELS = { unpaid: 'Unpaid', deposit_paid: 'Deposit', partial: 'Partial', paid: 'Paid', cancelled: 'Cancelled' }
 const PAY_BADGES = { unpaid: 'badge-red', deposit_paid: 'badge-amber', partial: 'badge-blue', paid: 'badge-green', cancelled: 'badge-red' }
 function payLabel(b) {
-  if (b.status === 'cancelled') return 'Cancelled'
-  return PAY_LABELS[b.paymentStatus] || b.paymentStatus
+  if (b.status === 'cancelled') return t('Cancelled')
+  return t(PAY_LABELS[b.paymentStatus] || b.paymentStatus)
 }
 function payBadge(b) {
   if (b.status === 'cancelled') return 'badge-red'
@@ -290,11 +341,49 @@ function fromModalPayments() {
 
 .pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: .875rem; border-top: 1px solid var(--border); }
 
+/* ── Mobile reservation cards (hidden on desktop) ── */
+.res-cards { display: none; flex-direction: column; gap: .6rem; }
+.res-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .85rem .9rem;
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.res-card:active { background: var(--bg-3); }
+.rc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; }
+.rc-name { font-weight: 700; font-size: .95rem; color: var(--text); }
+.rc-apt { display: flex; align-items: center; gap: .4rem; font-size: .78rem; color: var(--text-2); margin-top: .15rem; }
+.rc-dates {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  font-size: .8rem;
+  color: var(--text-2);
+  padding: .4rem .55rem;
+  background: var(--bg-3);
+  border-radius: var(--radius-sm);
+}
+.rc-nights { background: var(--bg-2); border-radius: 99px; padding: .05rem .5rem; font-size: .68rem; font-weight: 700; color: var(--text-3); flex-shrink: 0; }
+.rc-money { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; }
+.rc-money-item { display: flex; flex-direction: column; gap: .1rem; }
+.rc-money-lbl { font-size: .6rem; text-transform: uppercase; letter-spacing: .04em; color: var(--text-3); }
+.rc-money-val { font-size: .9rem; font-weight: 700; color: var(--text); }
+.rc-actions { display: flex; gap: .5rem; }
+.rc-btn { flex: 1; justify-content: center; padding: .55rem; font-size: .8rem; }
+
 @media (max-width: 768px) {
   .page { padding: 1rem 1rem 6rem; }
   .filters-bar { flex-direction: column; }
   .filter-select, .search-input { width: 100%; }
-  .table-wrap { font-size: .8rem; }
+  /* Swap the wide table for tidy cards */
+  .table-card { display: none; }
+  .res-cards { display: flex; }
 }
 @media (max-width: 600px) {
   .page-header { flex-direction: column; align-items: stretch; }

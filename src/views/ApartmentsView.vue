@@ -3,21 +3,20 @@
   <div class="page">
     <div class="page-header">
       <div class="page-header-text">
-        <h1>Apartments</h1>
+        <h1>{{ t('Apartments') }}</h1>
         <p class="text-muted text-sm mt-2">
-          {{ apartments.length }}
-          apartment{{ apartments.length !== 1 ? 's' : '' }} in your workspace
+          {{ t('{n} apartments in your workspace', { n: apartments.length }) }}
         </p>
       </div>
-      <button class="btn btn-primary add-btn" @click="openAdd">+ Add Apartment</button>
+      <button class="btn btn-primary add-btn" @click="openAdd">{{ t('+ Add Apartment') }}</button>
     </div>
 
     <!-- Empty state -->
     <div v-if="apartments.length === 0 && !loading" class="empty-card">
       <div class="empty-icon">🏠</div>
-      <h3>No apartments yet</h3>
-      <p class="text-muted text-sm">Add your first apartment to start managing bookings.</p>
-      <button class="btn btn-primary mt-4" @click="openAdd">+ Add Apartment</button>
+      <h3>{{ t('No apartments yet') }}</h3>
+      <p class="text-muted text-sm">{{ t('Add your first apartment to start managing bookings.') }}</p>
+      <button class="btn btn-primary mt-4" @click="openAdd">{{ t('+ Add Apartment') }}</button>
     </div>
 
     <!-- Apartments grid -->
@@ -28,13 +27,13 @@
             <h3>{{ apt.name }}</h3>
           </div>
           <div class="apt-meta">
-            <span class="apt-meta-item">👥 {{ apt.maxGuests || apt.capacity || 1 }} guests max</span>
-            <span class="apt-meta-item">💰 €{{ apt.pricePerNight || 0 }}/night</span>
+            <span class="apt-meta-item">👥 {{ t('{n} guests max', { n: apt.maxGuests || apt.capacity || 1 }) }}</span>
+            <span class="apt-meta-item">💰 {{ t('{price}/night', { price: '€' + (apt.pricePerNight || 0) }) }}</span>
           </div>
           <div class="apt-actions">
-            <button class="btn btn-ghost btn-sm" @click="openStats(apt)">📊 Stats</button>
-            <button class="btn btn-ghost btn-sm" @click="openEdit(apt)">✏️ Edit</button>
-            <button class="btn btn-danger btn-sm" @click="confirmDelete(apt)">🗑 Delete</button>
+            <button class="btn btn-ghost btn-sm" @click="openStats(apt)">{{ t('📊 Stats') }}</button>
+            <button class="btn btn-ghost btn-sm" @click="openEdit(apt)">{{ t('✏️ Edit') }}</button>
+            <button class="btn btn-danger btn-sm" @click="confirmDelete(apt)">{{ t('🗑 Delete') }}</button>
           </div>
         </div>
 
@@ -48,23 +47,23 @@
         <div class="apt-stats">
           <div class="apt-stat">
             <span class="apt-stat-value">{{ stats(apt.id).bookings }}</span>
-            <span class="apt-stat-label">Bookings</span>
+            <span class="apt-stat-label">{{ t('Bookings') }}</span>
           </div>
           <div class="apt-stat">
             <span class="apt-stat-value text-green">€{{ stats(apt.id).collected.toLocaleString() }}</span>
-            <span class="apt-stat-label">Collected</span>
+            <span class="apt-stat-label">{{ t('Collected') }}</span>
           </div>
           <div class="apt-stat">
             <span class="apt-stat-value">{{ stats(apt.id).occupancy }}%</span>
-            <span class="apt-stat-label">Occupancy</span>
+            <span class="apt-stat-label">{{ t('Occupancy') }}</span>
           </div>
           <div class="apt-stat" v-if="stats(apt.id).activeNow">
-            <span class="apt-stat-value" style="color:var(--green)">Active</span>
-            <span class="apt-stat-label">Status</span>
+            <span class="apt-stat-value" style="color:var(--green)">{{ t('Active (apt)') }}</span>
+            <span class="apt-stat-label">{{ t('Status') }}</span>
           </div>
           <div class="apt-stat" v-else>
             <span class="apt-stat-value text-muted" style="font-size:.8rem">{{ stats(apt.id).nextCheckIn || '—' }}</span>
-            <span class="apt-stat-label">Next Check-in</span>
+            <span class="apt-stat-label">{{ t('Next Check-in') }}</span>
           </div>
         </div>
       </div>
@@ -77,7 +76,7 @@
           <div class="detail-header">
             <div>
               <h2>{{ statsApt.name }}</h2>
-              <div class="text-xs text-muted mt-1">{{ statsApt.maxGuests || statsApt.capacity }} guests · €{{ statsApt.pricePerNight }}/night</div>
+              <div class="text-xs text-muted mt-1">{{ t('{n} guests · {price}/night', { n: (statsApt.maxGuests || statsApt.capacity), price: '€' + statsApt.pricePerNight }) }}</div>
             </div>
             <button class="btn btn-ghost btn-sm" @click="statsApt = null">✕</button>
           </div>
@@ -88,52 +87,52 @@
           <div class="stats-kpi-grid">
             <div class="stats-kpi">
               <div class="stats-kpi-val">{{ detailStats.bookings }}</div>
-              <div class="stats-kpi-lbl">Total Bookings</div>
+              <div class="stats-kpi-lbl">{{ t('Total Bookings') }}</div>
             </div>
             <div class="stats-kpi">
               <div class="stats-kpi-val">{{ detailStats.nights }}</div>
-              <div class="stats-kpi-lbl">Nights Sold</div>
+              <div class="stats-kpi-lbl">{{ t('Nights Sold') }}</div>
             </div>
             <div class="stats-kpi green">
               <div class="stats-kpi-val">€{{ detailStats.collected.toLocaleString() }}</div>
-              <div class="stats-kpi-lbl">Collected</div>
+              <div class="stats-kpi-lbl">{{ t('Collected') }}</div>
             </div>
             <div class="stats-kpi">
               <div class="stats-kpi-val">€{{ detailStats.expected.toLocaleString() }}</div>
-              <div class="stats-kpi-lbl">Expected</div>
+              <div class="stats-kpi-lbl">{{ t('Expected') }}</div>
             </div>
             <div class="stats-kpi" :class="{ red: detailStats.outstanding > 0 }">
               <div class="stats-kpi-val">€{{ detailStats.outstanding.toLocaleString() }}</div>
-              <div class="stats-kpi-lbl">Outstanding</div>
+              <div class="stats-kpi-lbl">{{ t('Outstanding') }}</div>
             </div>
             <div class="stats-kpi accent">
               <div class="stats-kpi-val">{{ detailStats.occupancy }}%</div>
-              <div class="stats-kpi-lbl">Occupancy (yr)</div>
+              <div class="stats-kpi-lbl">{{ t('Occupancy (yr)') }}</div>
             </div>
             <div class="stats-kpi">
               <div class="stats-kpi-val">€{{ detailStats.avgPerNight }}</div>
-              <div class="stats-kpi-lbl">Avg / Night</div>
+              <div class="stats-kpi-lbl">{{ t('Avg / Night') }}</div>
             </div>
             <div class="stats-kpi">
               <div class="stats-kpi-val">{{ detailStats.availableDays }}</div>
-              <div class="stats-kpi-lbl">Available Days</div>
+              <div class="stats-kpi-lbl">{{ t('Available Days') }}</div>
             </div>
           </div>
 
           <!-- Payment breakdown -->
-          <div class="detail-section-title">Payment Breakdown</div>
+          <div class="detail-section-title">{{ t('Payment Breakdown') }}</div>
           <div class="pay-breakdown">
             <div v-for="s in detailStats.payBreakdown" :key="s.key" :class="['pay-row', s.key]">
-              <span class="pay-row-label">{{ s.label }}</span>
+              <span class="pay-row-label">{{ t(s.label) }}</span>
               <span class="pay-row-count">{{ s.count }}</span>
               <span class="pay-row-amount">€{{ s.amount.toLocaleString() }}</span>
             </div>
           </div>
 
           <!-- Recent bookings -->
-          <div class="detail-section-title">Recent Bookings</div>
+          <div class="detail-section-title">{{ t('Recent Bookings') }}</div>
           <div v-if="detailStats.recentBookings.length === 0" class="text-sm text-muted" style="padding:.5rem 0">
-            No bookings for this apartment.
+            {{ t('No bookings for this apartment.') }}
           </div>
           <div v-else class="recent-bookings-list">
             <div v-for="b in detailStats.recentBookings" :key="b.id" class="recent-booking-item">
@@ -141,7 +140,7 @@
               <div class="rb-guest">{{ b.guestName }}</div>
               <div class="rb-right">
                 <span class="rb-price">€{{ (b.totalPrice||0).toLocaleString() }}</span>
-                <span :class="['badge', payBadge(b.paymentStatus)]" style="font-size:.62rem">{{ payLabel(b.paymentStatus) }}</span>
+                <span :class="['badge', payBadge(b.paymentStatus)]" style="font-size:.62rem">{{ t(payLabel(b.paymentStatus)) }}</span>
               </div>
             </div>
           </div>
@@ -154,18 +153,18 @@
       <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
         <div class="modal">
           <div class="modal-title">
-            <span>{{ editing ? 'Edit Apartment' : 'Add Apartment' }}</span>
+            <span>{{ editing ? t('Edit Apartment') : t('Add Apartment') }}</span>
             <button class="btn btn-ghost btn-sm" @click="closeModal">✕</button>
           </div>
 
           <form @submit.prevent="saveApartment" class="modal-form">
             <div class="form-row">
               <div class="form-group flex-1">
-                <label class="form-label">Apartment Name *</label>
-                <input v-model="form.name" class="form-input" placeholder="e.g. Ocean Suite A" required />
+                <label class="form-label">{{ t('Apartment Name *') }}</label>
+                <input v-model="form.name" class="form-input" :placeholder="t('e.g. Ocean Suite A')" required />
               </div>
               <div class="form-group" style="width: 110px">
-                <label class="form-label">Color</label>
+                <label class="form-label">{{ t('Color') }}</label>
                 <div class="color-grid">
                   <button v-for="c in COLORS" :key="c" type="button"
                     class="color-dot"
@@ -178,11 +177,11 @@
 
             <div class="form-row">
               <div class="form-group flex-1">
-                <label class="form-label">Max Guests *</label>
+                <label class="form-label">{{ t('Max Guests *') }}</label>
                 <input v-model.number="form.maxGuests" class="form-input" type="number" min="1" max="20" required />
               </div>
               <div class="form-group flex-1">
-                <label class="form-label">Default Price / Night (€)</label>
+                <label class="form-label">{{ t('Default Price / Night (€)') }}</label>
                 <input v-model.number="form.pricePerNight" class="form-input" type="number" min="0" step="0.01" />
               </div>
             </div>
@@ -190,25 +189,25 @@
             <div v-if="formError" class="error-msg">{{ formError }}</div>
 
             <div class="form-group">
-              <label class="form-label">Description</label>
+              <label class="form-label">{{ t('Description') }}</label>
               <textarea v-model="form.description" class="form-input" rows="2"
-                placeholder="Short description of the apartment…"></textarea>
+                :placeholder="t('Short description of the apartment…')"></textarea>
             </div>
 
             <div class="form-group">
-              <label class="form-label">Features</label>
+              <label class="form-label">{{ t('Features') }}</label>
               <div class="features-grid">
                 <label v-for="f in FEATURES" :key="f.value" class="feature-checkbox">
                   <input type="checkbox" :value="f.value" v-model="form.features" />
-                  <span>{{ f.label }}</span>
+                  <span>{{ t(f.label) }}</span>
                 </label>
               </div>
             </div>
 
             <div class="modal-footer">
-              <button type="button" class="btn btn-ghost" @click="closeModal">Cancel</button>
+              <button type="button" class="btn btn-ghost" @click="closeModal">{{ t('Cancel') }}</button>
               <button type="submit" class="btn btn-primary" :disabled="saving">
-                {{ saving ? 'Saving…' : (editing ? 'Save Changes' : 'Add Apartment') }}
+                {{ saving ? t('Saving…') : (editing ? t('Save Changes') : t('Add Apartment')) }}
               </button>
             </div>
           </form>
@@ -220,15 +219,15 @@
     <Transition name="fade">
       <div v-if="deleteTarget" class="modal-overlay" @click.self="deleteTarget = null">
         <div class="modal" style="max-width: 380px">
-          <div class="modal-title">Delete Apartment</div>
+          <div class="modal-title">{{ t('Delete Apartment') }}</div>
           <p class="text-muted text-sm mb-4">
-            Are you sure you want to delete <strong style="color: var(--text)">{{ deleteTarget.name }}</strong>?
-            This will not delete existing bookings but they will lose their apartment reference.
+            {{ t('Are you sure you want to delete') }} <strong style="color: var(--text)">{{ deleteTarget.name }}</strong>?
+            {{ t('This will not delete existing bookings but they will lose their apartment reference.') }}
           </p>
           <div class="modal-footer">
-            <button class="btn btn-ghost" @click="deleteTarget = null">Cancel</button>
+            <button class="btn btn-ghost" @click="deleteTarget = null">{{ t('Cancel') }}</button>
             <button class="btn btn-danger" @click="doDelete" :disabled="saving">
-              {{ saving ? 'Deleting…' : 'Delete' }}
+              {{ saving ? t('Deleting…') : t('Delete') }}
             </button>
           </div>
         </div>
@@ -242,6 +241,7 @@ import { ref, computed } from 'vue'
 import { format, parseISO, isWithinInterval, startOfDay, isAfter, getDaysInYear } from 'date-fns'
 import { useApartmentsStore } from '@/stores/apartments'
 import { useBookingsStore } from '@/stores/bookings'
+import { t } from '@/i18n'
 
 const apartmentsStore = useApartmentsStore()
 const bookingsStore = useBookingsStore()
@@ -274,7 +274,7 @@ const PAY_LABELS = { unpaid: 'Unpaid', deposit_paid: 'Deposit', partial: 'Partia
 const PAY_BADGES = { unpaid: 'badge-red', deposit_paid: 'badge-amber', partial: 'badge-blue', paid: 'badge-green' }
 function payLabel(s) { return PAY_LABELS[s] || s }
 function payBadge(s) { return PAY_BADGES[s] || 'badge-amber' }
-function featureLabel(val) { return FEATURES.find(f => f.value === val)?.label || val }
+function featureLabel(val) { return t(FEATURES.find(f => f.value === val)?.label || val) }
 function fmtDate(d) { return d ? format(parseISO(d), 'dd MMM yy') : '—' }
 
 function aptBookings(id) {

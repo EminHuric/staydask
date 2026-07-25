@@ -3,23 +3,23 @@
   <div class="page">
     <div class="page-header">
       <div>
-        <h1>Guests</h1>
-        <p class="text-muted text-sm mt-2">{{ filtered.length }} guest{{ filtered.length !== 1 ? 's' : '' }} in database</p>
+        <h1>{{ t('Guests') }}</h1>
+        <p class="text-muted text-sm mt-2">{{ t('{n} guests in database', { n: filtered.length }) }}</p>
       </div>
-      <button class="btn btn-primary" @click="openAdd">+ Add Guest</button>
+      <button class="btn btn-primary" @click="openAdd">{{ t('+ Add Guest') }}</button>
     </div>
 
     <!-- Search -->
     <div class="filters-bar">
-      <input v-model="search" class="form-input search-input" placeholder="Search by name, phone, email, country…" />
-      <button v-if="search" class="btn btn-ghost btn-sm" @click="search = ''">Clear</button>
+      <input v-model="search" class="form-input search-input" :placeholder="t('Search by name, phone, email, country…')" />
+      <button v-if="search" class="btn btn-ghost btn-sm" @click="search = ''">{{ t('Clear') }}</button>
     </div>
 
     <!-- Empty -->
     <div v-if="filtered.length === 0 && !guestsStore.loading" class="empty-card">
       <div style="font-size: 2.5rem; margin-bottom: 0.75rem">👥</div>
-      <h3>{{ search ? 'No guests found' : 'No guests yet' }}</h3>
-      <p class="text-muted text-sm">Guests are added automatically when you create bookings.</p>
+      <h3>{{ search ? t('No guests found') : t('No guests yet') }}</h3>
+      <p class="text-muted text-sm">{{ t('Guests are added automatically when you create bookings.') }}</p>
     </div>
 
     <!-- Guest cards grid -->
@@ -35,17 +35,17 @@
           </div>
           <div class="guest-stats">
             <span class="guest-stat">
-              <strong>{{ guestBookings(g.id).length }}</strong> stay{{ guestBookings(g.id).length !== 1 ? 's' : '' }}
+              {{ t('{n} stays', { n: guestBookings(g.id).length }) }}
             </span>
             <span v-if="guestRevenue(g.id) > 0" class="guest-stat text-accent">
               €{{ guestRevenue(g.id).toLocaleString() }}
             </span>
             <span v-if="lastReservation(g.id)" class="guest-stat text-muted">
-              Last: {{ formatDate(lastReservation(g.id)) }}
+              {{ t('Last: {date}', { date: formatDate(lastReservation(g.id)) }) }}
             </span>
           </div>
         </div>
-        <button class="btn btn-ghost btn-sm guest-edit-btn" @click.stop="openEdit(g)">Edit</button>
+        <button class="btn btn-ghost btn-sm guest-edit-btn" @click.stop="openEdit(g)">{{ t('Edit') }}</button>
       </div>
     </div>
 
@@ -54,44 +54,44 @@
       <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
         <div class="modal">
           <div class="modal-title">
-            <span>{{ editingId ? 'Edit Guest' : 'Add Guest' }}</span>
+            <span>{{ editingId ? t('Edit Guest') : t('Add Guest') }}</span>
             <button class="btn btn-ghost btn-sm" @click="closeModal">✕</button>
           </div>
           <form @submit.prevent="saveGuest" class="modal-form">
             <div class="form-group">
-              <label class="form-label">Full Name *</label>
-              <input v-model="form.fullName" class="form-input" placeholder="John Smith" required />
+              <label class="form-label">{{ t('Full Name *') }}</label>
+              <input v-model="form.fullName" class="form-input" placeholder="Marko Marković" required />
             </div>
             <div class="form-row">
               <div class="form-group flex-1">
-                <label class="form-label">Phone</label>
-                <input v-model="form.phone" class="form-input" placeholder="+385 91 234 5678" />
+                <label class="form-label">{{ t('Phone') }}</label>
+                <input v-model="form.phone" class="form-input" placeholder="+381 61 234 5678" />
               </div>
               <div class="form-group flex-1">
-                <label class="form-label">Email</label>
-                <input v-model="form.email" class="form-input" type="email" placeholder="john@example.com" />
+                <label class="form-label">{{ t('Email') }}</label>
+                <input v-model="form.email" class="form-input" type="email" placeholder="marko@example.com" />
               </div>
             </div>
             <div class="form-row">
               <div class="form-group flex-1">
-                <label class="form-label">Country</label>
-                <input v-model="form.country" class="form-input" placeholder="Germany" />
+                <label class="form-label">{{ t('Country') }}</label>
+                <input v-model="form.country" class="form-input" placeholder="Srbija" />
               </div>
               <div class="form-group flex-1">
-                <label class="form-label">Origin / City</label>
-                <input v-model="form.origin" class="form-input" placeholder="Berlin" />
+                <label class="form-label">{{ t('Origin / City') }}</label>
+                <input v-model="form.origin" class="form-input" placeholder="Beograd" />
               </div>
             </div>
             <div class="form-group">
-              <label class="form-label">Notes</label>
-              <textarea v-model="form.notes" class="form-input" rows="2" placeholder="Any notes about this guest…"></textarea>
+              <label class="form-label">{{ t('Notes') }}</label>
+              <textarea v-model="form.notes" class="form-input" rows="2" :placeholder="t('Any notes about this guest…')"></textarea>
             </div>
             <div class="modal-footer">
-              <button v-if="editingId" type="button" class="btn btn-danger btn-sm" @click="removeGuest">Delete</button>
+              <button v-if="editingId" type="button" class="btn btn-danger btn-sm" @click="removeGuest">{{ t('Delete') }}</button>
               <div class="flex-1"></div>
-              <button type="button" class="btn btn-ghost" @click="closeModal">Cancel</button>
+              <button type="button" class="btn btn-ghost" @click="closeModal">{{ t('Cancel') }}</button>
               <button type="submit" class="btn btn-primary" :disabled="saving">
-                {{ saving ? 'Saving…' : (editingId ? 'Save' : 'Add Guest') }}
+                {{ saving ? t('Saving…') : (editingId ? t('Save') : t('Add Guest')) }}
               </button>
             </div>
           </form>
@@ -123,13 +123,13 @@
               </div>
             </div>
             <div class="detail-header-actions">
-              <button class="btn btn-ghost btn-sm" @click="openEdit(detailGuest); detailGuest = null">Edit</button>
+              <button class="btn btn-ghost btn-sm" @click="openEdit(detailGuest); detailGuest = null">{{ t('Edit') }}</button>
               <button class="btn btn-ghost btn-sm" @click="detailGuest = null">✕</button>
             </div>
           </div>
 
           <div v-if="detailGuest.notes" class="detail-notes">
-            <div class="form-label mb-2">Notes</div>
+            <div class="form-label mb-2">{{ t('Notes') }}</div>
             <p class="text-sm text-muted">{{ detailGuest.notes }}</p>
           </div>
 
@@ -137,26 +137,26 @@
           <div class="detail-stats">
             <div class="detail-stat">
               <div class="stat-value">{{ guestBookings(detailGuest.id).length }}</div>
-              <div class="stat-label">Stays</div>
+              <div class="stat-label">{{ t('Stays') }}</div>
             </div>
             <div class="detail-stat">
               <div class="stat-value">{{ guestNights(detailGuest.id) }}</div>
-              <div class="stat-label">Nights</div>
+              <div class="stat-label">{{ t('Nights') }}</div>
             </div>
             <div class="detail-stat accent">
               <div class="stat-value">€{{ guestRevenue(detailGuest.id).toLocaleString() }}</div>
-              <div class="stat-label">Total Spent</div>
+              <div class="stat-label">{{ t('Total Spent') }}</div>
             </div>
             <div class="detail-stat" style="grid-column: span 3">
               <div class="stat-value stat-value-sm">{{ lastReservation(detailGuest.id) ? formatDate(lastReservation(detailGuest.id)) : '—' }}</div>
-              <div class="stat-label">Last Reservation</div>
+              <div class="stat-label">{{ t('Last Reservation') }}</div>
             </div>
           </div>
 
           <!-- Booking history -->
-          <div class="detail-section-title">Booking History</div>
+          <div class="detail-section-title">{{ t('Booking History') }}</div>
           <div v-if="guestBookings(detailGuest.id).length === 0" class="text-sm text-muted" style="padding: 1rem 0">
-            No bookings yet.
+            {{ t('No bookings yet.') }}
           </div>
           <div v-else class="booking-history">
             <div v-for="b in guestBookings(detailGuest.id)" :key="b.id"
@@ -169,7 +169,7 @@
                   <span class="apt-dot" :style="{ background: aptColor(b.apartmentId) }"></span>
                   <span class="history-apt-name">{{ aptName(b.apartmentId) }}</span>
                 </div>
-                <span :class="['badge', statusBadge(b), 'badge-sm']">{{ statusLabel(b) }}</span>
+                <span :class="['badge', statusBadge(b), 'badge-sm']">{{ t(statusLabel(b)) }}</span>
               </div>
               <!-- Middle row: dates + nights -->
               <div class="history-dates">
@@ -179,15 +179,15 @@
               <!-- Bottom row: pricing breakdown + edit hint -->
               <div class="history-pricing">
                 <div class="history-price-detail">
-                  <span class="price-per-night">€{{ b.pricePerNight }}/night</span>
+                  <span class="price-per-night">{{ t('{price}/night', { price: '€' + b.pricePerNight }) }}</span>
                   <span class="price-sep">·</span>
-                  <span class="price-total">€{{ (b.totalPrice || 0).toLocaleString() }} total</span>
+                  <span class="price-total">€{{ (b.totalPrice || 0).toLocaleString() }} {{ t('total') }}</span>
                   <span v-if="(b.totalPrice || 0) - (b.totalPaid || 0) > 0" class="price-owed">
-                    · <span style="color:var(--red)">€{{ ((b.totalPrice||0)-(b.totalPaid||0)).toLocaleString() }} owed</span>
+                    · <span style="color:var(--red)">€{{ ((b.totalPrice||0)-(b.totalPaid||0)).toLocaleString() }} {{ t('owed') }}</span>
                   </span>
-                  <span v-else class="price-paid-tag">✓ Paid</span>
+                  <span v-else class="price-paid-tag">{{ t('✓ Paid') }}</span>
                 </div>
-                <span class="edit-hint">Edit →</span>
+                <span class="edit-hint">{{ t('Edit →') }}</span>
               </div>
             </div>
           </div>
@@ -204,6 +204,7 @@ import { useGuestsStore } from '@/stores/guests'
 import { useBookingsStore } from '@/stores/bookings'
 import { useApartmentsStore } from '@/stores/apartments'
 import BookingModal from '@/components/BookingModal.vue'
+import { t } from '@/i18n'
 
 const guestsStore = useGuestsStore()
 const bookingsStore = useBookingsStore()

@@ -3,9 +3,9 @@
 <template>
   <div>
     <!-- Trigger button -->
-    <button class="search-trigger" @click="open = true" title="Search (Ctrl+K)">
+    <button class="search-trigger" @click="open = true" :title="t('Search (Ctrl+K)')">
       <span class="search-icon">🔍</span>
-      <span class="search-hint">Search…</span>
+      <span class="search-hint">{{ t('Search…') }}</span>
       <kbd class="kbd">Ctrl K</kbd>
     </button>
 
@@ -21,7 +21,7 @@
                 ref="inputRef"
                 v-model="query"
                 class="search-input"
-                placeholder="Search bookings, guests, apartments…"
+                :placeholder="t('Search bookings, guests, apartments…')"
                 autocomplete="off"
                 @keydown.down.prevent="moveDown"
                 @keydown.up.prevent="moveUp"
@@ -34,7 +34,7 @@
             <!-- Results -->
             <div class="search-results" ref="resultsRef">
               <template v-if="query.trim().length > 0">
-                <div v-if="results.length === 0" class="no-results">No results for "{{ query }}"</div>
+                <div v-if="results.length === 0" class="no-results">{{ t('No results for "{q}"', { q: query }) }}</div>
                 <template v-else>
                   <template v-for="(group, gi) in groupedResults" :key="gi">
                     <div class="result-group-label">{{ group.label }}</div>
@@ -57,18 +57,18 @@
               </template>
               <div v-else class="search-empty">
                 <div class="search-empty-icon">🔍</div>
-                <div>Start typing to search across all data</div>
+                <div>{{ t('Start typing to search across all data') }}</div>
                 <div class="search-empty-tips">
-                  <span>Bookings</span><span>·</span><span>Guests</span><span>·</span><span>Apartments</span>
+                  <span>{{ t('Bookings') }}</span><span>·</span><span>{{ t('Guests') }}</span><span>·</span><span>{{ t('Apartments') }}</span>
                 </div>
               </div>
             </div>
 
             <!-- Footer hint -->
             <div class="search-footer">
-              <span><kbd>↑↓</kbd> navigate</span>
-              <span><kbd>Enter</kbd> select</span>
-              <span><kbd>Esc</kbd> close</span>
+              <span><kbd>↑↓</kbd> {{ t('navigate') }}</span>
+              <span><kbd>Enter</kbd> {{ t('select') }}</span>
+              <span><kbd>Esc</kbd> {{ t('close') }}</span>
             </div>
           </div>
         </div>
@@ -84,6 +84,7 @@ import { format, parseISO } from 'date-fns'
 import { useBookingsStore } from '@/stores/bookings'
 import { useApartmentsStore } from '@/stores/apartments'
 import { useGuestsStore } from '@/stores/guests'
+import { t } from '@/i18n'
 
 const router = useRouter()
 const bookingsStore = useBookingsStore()
@@ -133,9 +134,9 @@ const results = computed(() => {
         type: 'booking',
         id: b.id,
         icon: b.status === 'cancelled' ? '❌' : '📋',
-        title: b.guestName || 'Unknown',
+        title: b.guestName || t('Unknown'),
         sub: `${b.reservationId || ''} · ${aptName(b.apartmentId)} · ${fmtDate(b.checkIn)} → ${fmtDate(b.checkOut)}`,
-        badge: PAY_LABELS[b.paymentStatus] || b.paymentStatus,
+        badge: t(PAY_LABELS[b.paymentStatus] || b.paymentStatus),
         badgeClass: PAY_BADGES[b.paymentStatus] || 'badge-amber',
         data: b
       })
@@ -155,7 +156,7 @@ const results = computed(() => {
         type: 'guest',
         id: g.id,
         icon: '👤',
-        title: g.fullName || 'Unknown',
+        title: g.fullName || t('Unknown'),
         sub: [g.phone, g.email, g.country || g.origin].filter(Boolean).join(' · '),
         data: g
       })
@@ -170,7 +171,7 @@ const results = computed(() => {
         id: a.id,
         icon: '🏨',
         title: a.name,
-        sub: `${a.maxGuests || a.capacity || '?'} guests · €${a.pricePerNight || '?'}/night`,
+        sub: t('{n} guests · {price}/night', { n: (a.maxGuests || a.capacity || '?'), price: '€' + (a.pricePerNight || '?') }),
         data: a
       })
     }
@@ -181,7 +182,7 @@ const results = computed(() => {
 
 const groupedResults = computed(() => {
   const groups = {}
-  const labels = { booking: 'Reservations', guest: 'Guests', apartment: 'Apartments' }
+  const labels = { booking: t('Reservations'), guest: t('Guests'), apartment: t('Apartments') }
   results.value.forEach(r => {
     if (!groups[r.type]) groups[r.type] = { label: labels[r.type], items: [] }
     groups[r.type].items.push(r)

@@ -5,49 +5,50 @@
     <div class="setup-card">
       <div class="setup-logo">
         <div class="logo-icon">🏠</div>
-        <div>
+        <div class="setup-logo-text">
           <div class="serif" style="font-size:1.6rem; color: var(--text)">RMS</div>
-          <div class="text-xs text-muted">First-time Setup</div>
+          <div class="text-xs text-muted">{{ t('First-time Setup') }}</div>
         </div>
+        <LanguageToggle />
       </div>
 
       <div v-if="done" class="done-state">
         <div style="font-size: 2.5rem; margin-bottom: 1rem">✅</div>
-        <h2>Admin account created!</h2>
-        <p class="text-muted text-sm mt-2">Redirecting you to the app…</p>
+        <h2>{{ t('Admin account created!') }}</h2>
+        <p class="text-muted text-sm mt-2">{{ t('Redirecting you to the app…') }}</p>
       </div>
 
       <template v-else>
         <p class="setup-intro">
-          Welcome! Create your <strong>super admin</strong> account to get started.
-          This page only appears once — when no accounts exist yet.
+          {{ t('Welcome! Create your') }} <strong>{{ t('super admin') }}</strong>
+          {{ t('account to get started. This page only appears once — when no accounts exist yet.') }}
         </p>
 
         <form @submit.prevent="handleSetup" class="setup-form">
           <div class="form-group">
-            <label class="form-label">Your Name</label>
-            <input v-model="form.name" class="form-input" placeholder="e.g. Marco" required />
+            <label class="form-label">{{ t('Your Name') }}</label>
+            <input v-model="form.name" class="form-input" :placeholder="t('e.g. Marco')" required />
           </div>
           <div class="form-group">
-            <label class="form-label">Email</label>
+            <label class="form-label">{{ t('Email') }}</label>
             <input v-model="form.email" class="form-input" type="email" placeholder="you@email.com" required />
           </div>
           <div class="form-group">
-            <label class="form-label">Password</label>
+            <label class="form-label">{{ t('Password') }}</label>
             <input v-model="form.password" class="form-input" type="password"
-              placeholder="min. 6 characters" minlength="6" required />
+              :placeholder="t('min. 6 characters')" minlength="6" required />
           </div>
 
           <div v-if="error" class="error-msg">{{ error }}</div>
 
           <button type="submit" class="btn btn-primary w-full" :disabled="loading">
-            {{ loading ? 'Creating account…' : 'Create Admin Account →' }}
+            {{ loading ? t('Creating account…') : t('Create Admin Account →') }}
           </button>
         </form>
 
         <p class="setup-footer">
-          Already have an account?
-          <router-link to="/login" style="color: var(--accent)">Sign in</router-link>
+          {{ t('Already have an account?') }}
+          <router-link to="/login" style="color: var(--accent)">{{ t('Sign in') }}</router-link>
         </p>
       </template>
     </div>
@@ -58,6 +59,8 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import LanguageToggle from '@/components/LanguageToggle.vue'
+import { t } from '@/i18n'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -112,6 +115,7 @@ async function handleSetup() {
   gap: 0.75rem;
   margin-bottom: 1.5rem;
 }
+.setup-logo-text { flex: 1; min-width: 0; }
 
 .logo-icon {
   width: 48px; height: 48px;

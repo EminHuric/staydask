@@ -3,15 +3,15 @@
   <div class="page">
     <div class="page-header">
       <div>
-        <h1>Admin Panel</h1>
-        <p class="text-muted text-sm mt-2">Manage accounts, access and invite codes</p>
+        <h1>{{ t('Admin Panel') }}</h1>
+        <p class="text-muted text-sm mt-2">{{ t('Manage accounts, access and invite codes') }}</p>
       </div>
       <div class="header-actions">
         <label class="role-toggle">
           <input type="checkbox" v-model="newCodeIsAdmin" />
-          Invite as admin
+          {{ t('Invite as admin') }}
         </label>
-        <button class="btn btn-primary" @click="createCode">+ Generate Invite Code</button>
+        <button class="btn btn-primary" @click="createCode">{{ t('+ Generate Invite Code') }}</button>
       </div>
     </div>
 
@@ -19,43 +19,43 @@
 
     <!-- Platform overview -->
     <div class="card mb-4">
-      <h2 class="mb-4">Platform Overview</h2>
+      <h2 class="mb-4">{{ t('Platform Overview') }}</h2>
       <div class="grid-4">
         <div class="stat-card">
           <div class="stat-icon">👤</div>
           <div class="stat-value">{{ adminStore.users.length }}</div>
-          <div class="stat-label">Accounts</div>
+          <div class="stat-label">{{ t('Accounts') }}</div>
         </div>
         <div class="stat-card">
           <div class="stat-icon">🏠</div>
           <div class="stat-value">{{ platformTotals.apartments }}</div>
-          <div class="stat-label">Apartments</div>
+          <div class="stat-label">{{ t('Apartments') }}</div>
         </div>
         <div class="stat-card">
           <div class="stat-icon">📅</div>
           <div class="stat-value">{{ platformTotals.bookings }}</div>
-          <div class="stat-label">Bookings</div>
+          <div class="stat-label">{{ t('Bookings') }}</div>
         </div>
         <div class="stat-card">
           <div class="stat-icon">👥</div>
           <div class="stat-value">{{ platformTotals.guests }}</div>
-          <div class="stat-label">Guests</div>
+          <div class="stat-label">{{ t('Guests') }}</div>
         </div>
       </div>
       <p class="text-xs text-muted mt-2">
-        Each account's apartments, bookings and guests stay private — admins only see these totals and counts, never the actual data.
+        {{ t("Each account's apartments, bookings and guests stay private — admins only see these totals and counts, never the actual data.") }}
       </p>
     </div>
 
     <!-- Users management (detailed) -->
     <div class="card mb-4">
       <div class="card-header-row">
-        <h2>User Accounts</h2>
-        <input v-model="search" class="form-input search-input" placeholder="Search name or email…" />
+        <h2>{{ t('User Accounts') }}</h2>
+        <input v-model="search" class="form-input search-input" :placeholder="t('Search name or email…')" />
       </div>
 
       <div v-if="filteredUsers.length === 0" class="text-muted text-sm empty-pad">
-        {{ adminStore.users.length === 0 ? 'No users registered yet.' : 'No users match your search.' }}
+        {{ adminStore.users.length === 0 ? t('No users registered yet.') : t('No users match your search.') }}
       </div>
 
       <div class="users-grid">
@@ -65,62 +65,62 @@
             <div class="user-identity">
               <div class="user-name">
                 {{ u.username || u.email }}
-                <span v-if="u.id === authStore.user?.uid" class="you-tag">you</span>
+                <span v-if="u.id === authStore.user?.uid" class="you-tag">{{ t('you') }}</span>
               </div>
               <div class="user-email">{{ u.email }}</div>
             </div>
             <div class="user-badges">
-              <span v-if="isMain(u)" class="badge badge-amber">★ {{ isOwner(u) ? 'Owner' : 'Main admin' }}</span>
-              <span :class="['badge', u.role === 'admin' ? 'badge-amber' : 'badge-blue']">{{ u.role || 'user' }}</span>
-              <span :class="['badge', u.disabled ? 'badge-red' : 'badge-green']">{{ u.disabled ? 'Disabled' : 'Active' }}</span>
+              <span v-if="isMain(u)" class="badge badge-amber">★ {{ isOwner(u) ? t('Owner') : t('Main admin') }}</span>
+              <span :class="['badge', u.role === 'admin' ? 'badge-amber' : 'badge-blue']">{{ t(u.role || 'user') }}</span>
+              <span :class="['badge', u.disabled ? 'badge-red' : 'badge-green']">{{ u.disabled ? t('Disabled (status)') : t('Active (account)') }}</span>
             </div>
           </div>
 
           <div class="user-stats">
-            <div class="us"><span class="us-val">{{ count(u.apartmentCount) }}</span><span class="us-lbl">Apartments</span></div>
-            <div class="us"><span class="us-val">{{ count(u.bookingCount) }}</span><span class="us-lbl">Bookings</span></div>
-            <div class="us"><span class="us-val">{{ count(u.guestCount) }}</span><span class="us-lbl">Guests</span></div>
-            <div class="us"><span class="us-val small">{{ formatDate(u.createdAt) }}</span><span class="us-lbl">Joined</span></div>
+            <div class="us"><span class="us-val">{{ count(u.apartmentCount) }}</span><span class="us-lbl">{{ t('Apartments') }}</span></div>
+            <div class="us"><span class="us-val">{{ count(u.bookingCount) }}</span><span class="us-lbl">{{ t('Bookings') }}</span></div>
+            <div class="us"><span class="us-val">{{ count(u.guestCount) }}</span><span class="us-lbl">{{ t('Guests') }}</span></div>
+            <div class="us"><span class="us-val small">{{ formatDate(u.createdAt) }}</span><span class="us-lbl">{{ t('Joined') }}</span></div>
           </div>
 
           <div class="user-actions">
-            <button class="btn btn-ghost btn-sm" @click="openInspect(u)">👁 View data</button>
-            <button class="btn btn-ghost btn-sm" @click="openNotes(u)">📝 Notes</button>
+            <button class="btn btn-ghost btn-sm" @click="openInspect(u)">{{ t('👁 View data') }}</button>
+            <button class="btn btn-ghost btn-sm" @click="openNotes(u)">{{ t('📝 Notes') }}</button>
 
             <!-- Your own account -->
             <template v-if="u.id === authStore.user?.uid">
-              <span v-if="isOwner(u)" class="text-xs text-muted self-note">Your account — owner (protected).</span>
+              <span v-if="isOwner(u)" class="text-xs text-muted self-note">{{ t('Your account — owner (protected).') }}</span>
               <template v-else>
-                <span class="text-xs text-muted self-note">This is you.</span>
-                <button class="btn btn-ghost btn-sm" @click="stepDown(u)">Step down to user</button>
+                <span class="text-xs text-muted self-note">{{ t('This is you.') }}</span>
+                <button class="btn btn-ghost btn-sm" @click="stepDown(u)">{{ t('Step down to user') }}</button>
               </template>
             </template>
 
             <!-- A protected account you can't manage -->
             <template v-else-if="isMain(u) && !iAmMain">
-              <span class="text-xs text-muted self-note">{{ isOwner(u) ? 'Owner' : 'Main admin' }} — protected account.</span>
+              <span class="text-xs text-muted self-note">{{ isOwner(u) ? t('Owner') : t('Main admin') }} — {{ t('protected account.') }}</span>
             </template>
             <template v-else-if="isOwner(u)">
-              <span class="text-xs text-muted self-note">Owner — protected account.</span>
+              <span class="text-xs text-muted self-note">{{ t('Owner') }} — {{ t('protected account.') }}</span>
             </template>
 
             <!-- Manageable account -->
             <template v-else>
               <button class="btn btn-ghost btn-sm" @click="toggleRole(u)">
-                {{ u.role === 'admin' ? 'Demote' : 'Make admin' }}
+                {{ u.role === 'admin' ? t('Demote') : t('Make admin') }}
               </button>
               <button
                 v-if="iAmMain && u.role === 'admin'"
                 class="btn btn-ghost btn-sm"
                 @click="toggleMain(u)"
-              >{{ u.mainAdmin ? 'Remove main' : 'Make main' }}</button>
-              <button class="btn btn-ghost btn-sm" @click="resetUserPassword(u)">Reset password</button>
+              >{{ u.mainAdmin ? t('Remove main') : t('Make main') }}</button>
+              <button class="btn btn-ghost btn-sm" @click="resetUserPassword(u)">{{ t('Reset password') }}</button>
               <button
                 class="btn btn-sm"
                 :class="u.disabled ? 'btn-primary' : 'btn-ghost'"
                 @click="toggleDisabled(u)"
-              >{{ u.disabled ? 'Enable' : 'Disable' }}</button>
-              <button class="btn btn-danger btn-sm" @click="removeUser(u)">Delete</button>
+              >{{ u.disabled ? t('Enable') : t('Disable') }}</button>
+              <button class="btn btn-danger btn-sm" @click="removeUser(u)">{{ t('Delete') }}</button>
             </template>
           </div>
         </div>
@@ -129,20 +129,20 @@
 
     <!-- Invite codes -->
     <div class="card mb-4">
-      <h2 class="mb-4">Invite Codes</h2>
+      <h2 class="mb-4">{{ t('Invite Codes') }}</h2>
 
       <div v-if="newCode" class="new-code-banner">
         <div>
-          <div class="text-xs text-muted mb-1">New code generated — share this with your user:</div>
+          <div class="text-xs text-muted mb-1">{{ t('New code generated — share this with your user:') }}</div>
           <div class="code-display">{{ newCode }}</div>
         </div>
         <button class="btn btn-ghost btn-sm" @click="copyCode(newCode)">
-          {{ copied ? '✓ Copied' : 'Copy' }}
+          {{ copied ? t('✓ Copied') : t('Copy') }}
         </button>
       </div>
 
       <div class="label-group" v-if="adminStore.inviteCodes.length === 0 && !adminStore.loading">
-        <p class="text-muted text-sm">No invite codes yet. Generate one to add users.</p>
+        <p class="text-muted text-sm">{{ t('No invite codes yet. Generate one to add users.') }}</p>
       </div>
 
       <div class="codes-list">
@@ -154,25 +154,25 @@
             <span v-if="code.label" class="code-label-text">{{ code.label }}</span>
           </div>
           <div class="code-meta">
-            <span v-if="code.role === 'admin'" class="badge badge-amber">Admin invite</span>
+            <span v-if="code.role === 'admin'" class="badge badge-amber">{{ t('Admin invite') }}</span>
             <span v-if="code.usedBy" class="badge badge-green">
-              Used by {{ code.usedByUsername }}
+              {{ t('Used by {name}', { name: code.usedByUsername }) }}
             </span>
-            <span v-else-if="code.active" class="badge badge-amber">Available</span>
-            <span v-else class="badge badge-red">Inactive</span>
+            <span v-else-if="code.active" class="badge badge-amber">{{ t('Available (code)') }}</span>
+            <span v-else class="badge badge-red">{{ t('Inactive') }}</span>
           </div>
           <div class="code-actions">
             <button
               v-if="!code.usedBy"
               class="btn btn-ghost btn-sm"
               @click="copyCode(code.code)"
-            >Copy</button>
+            >{{ t('Copy') }}</button>
             <button
               v-if="!code.usedBy"
               class="btn btn-ghost btn-sm"
               @click="adminStore.toggleCodeActive(code.id, code.active)"
-            >{{ code.active ? 'Disable' : 'Enable' }}</button>
-            <button class="btn btn-danger btn-sm" @click="removeCode(code)">Delete</button>
+            >{{ code.active ? t('Disable') : t('Enable') }}</button>
+            <button class="btn btn-danger btn-sm" @click="removeCode(code)">{{ t('Delete') }}</button>
           </div>
         </div>
       </div>
@@ -183,25 +183,25 @@
       <div class="stat-card">
         <div class="stat-icon">🎟️</div>
         <div class="stat-value">{{ adminStore.inviteCodes.length }}</div>
-        <div class="stat-label">Total Codes</div>
+        <div class="stat-label">{{ t('Total Codes') }}</div>
       </div>
       <div class="stat-card">
         <div class="stat-icon">✅</div>
         <div class="stat-value">{{ usedCodes }}</div>
-        <div class="stat-label">Codes Used</div>
+        <div class="stat-label">{{ t('Codes Used') }}</div>
       </div>
       <div class="stat-card">
         <div class="stat-icon">🚫</div>
         <div class="stat-value">{{ disabledCount }}</div>
-        <div class="stat-label">Disabled Accounts</div>
+        <div class="stat-label">{{ t('Disabled Accounts') }}</div>
       </div>
     </div>
 
     <!-- Firebase rules reminder -->
     <div class="info-banner mt-4">
-      <strong>Firebase Setup Note:</strong> Security rules live in <code>firestore.rules</code> at the
-      project root — deploy them with <code>firebase deploy --only firestore:rules</code> so users and
-      invite codes stay scoped to your workspace.
+      <strong>{{ t('Firebase Setup Note:') }}</strong> {{ t('Security rules live in') }} <code>firestore.rules</code>
+      {{ t('at the project root — deploy them with') }} <code>firebase deploy --only firestore:rules</code>
+      {{ t('so users and invite codes stay scoped to your workspace.') }}
     </div>
 
     <!-- Notes modal -->
@@ -209,8 +209,8 @@
       <div class="notes-modal">
         <div class="notes-modal-header">
           <div>
-            <h3>Notes — {{ notesUser.username || notesUser.email }}</h3>
-            <p class="text-xs text-muted">Visible only to this user and admins.</p>
+            <h3>{{ t('Notes — {name}', { name: notesUser.username || notesUser.email }) }}</h3>
+            <p class="text-xs text-muted">{{ t('Visible only to this user and admins.') }}</p>
           </div>
           <button class="icon-close" @click="closeNotes">✕</button>
         </div>
@@ -220,15 +220,15 @@
             v-model="noteText"
             class="form-input"
             rows="2"
-            placeholder="Leave a note or message for this user…"
+            :placeholder="t('Leave a note or message for this user…')"
             @keydown.ctrl.enter="submitNote"
           ></textarea>
-          <button class="btn btn-primary btn-sm" :disabled="!noteText.trim()" @click="submitNote">Send note</button>
+          <button class="btn btn-primary btn-sm" :disabled="!noteText.trim()" @click="submitNote">{{ t('Send note') }}</button>
         </div>
 
         <div class="notes-list">
           <div v-if="adminStore.selectedUserNotes.length === 0" class="text-muted text-sm empty-pad">
-            No notes yet for this account.
+            {{ t('No notes yet for this account.') }}
           </div>
           <div
             v-for="n in adminStore.selectedUserNotes"
@@ -240,13 +240,13 @@
               <span class="note-author">
                 {{ n.authorName }}
                 <span class="badge" :class="n.authorRole === 'admin' ? 'badge-amber' : 'badge-blue'">
-                  {{ n.authorRole === 'admin' ? 'Admin' : 'User' }}
+                  {{ n.authorRole === 'admin' ? t('Admin') : t('User') }}
                 </span>
               </span>
               <span class="note-date">{{ formatDateTime(n.createdAt) }}</span>
             </div>
             <div class="note-text">{{ n.text }}</div>
-            <button class="note-del" @click="removeNote(n.id)" title="Delete note">🗑</button>
+            <button class="note-del" @click="removeNote(n.id)" :title="t('Delete note')">🗑</button>
           </div>
         </div>
       </div>
@@ -258,38 +258,38 @@
         <div class="notes-modal-header">
           <div>
             <h3>👁 {{ adminStore.inspect.user.username || adminStore.inspect.user.email }}</h3>
-            <p class="text-xs text-muted">Read-only — you can view this account's data but not change it.</p>
+            <p class="text-xs text-muted">{{ t("Read-only — you can view this account's data but not change it.") }}</p>
           </div>
           <button class="icon-close" @click="closeInspect">✕</button>
         </div>
 
-        <div v-if="adminStore.inspect.loading" class="inspect-state">Loading…</div>
+        <div v-if="adminStore.inspect.loading" class="inspect-state">{{ t('Loading…') }}</div>
 
         <template v-else>
           <div class="inspect-tabs">
             <button :class="['itab', { active: inspectTab === 'bookings' }]" @click="inspectTab = 'bookings'">
-              Bookings <span class="itab-n">{{ adminStore.inspect.bookings.length }}</span>
+              {{ t('Bookings') }} <span class="itab-n">{{ adminStore.inspect.bookings.length }}</span>
             </button>
             <button :class="['itab', { active: inspectTab === 'apartments' }]" @click="inspectTab = 'apartments'">
-              Apartments <span class="itab-n">{{ adminStore.inspect.apartments.length }}</span>
+              {{ t('Apartments') }} <span class="itab-n">{{ adminStore.inspect.apartments.length }}</span>
             </button>
             <button :class="['itab', { active: inspectTab === 'guests' }]" @click="inspectTab = 'guests'">
-              Guests <span class="itab-n">{{ adminStore.inspect.guests.length }}</span>
+              {{ t('Guests') }} <span class="itab-n">{{ adminStore.inspect.guests.length }}</span>
             </button>
           </div>
 
           <div class="inspect-list">
             <!-- Bookings -->
             <template v-if="inspectTab === 'bookings'">
-              <div v-if="!adminStore.inspect.bookings.length" class="text-muted text-sm empty-pad">No bookings.</div>
+              <div v-if="!adminStore.inspect.bookings.length" class="text-muted text-sm empty-pad">{{ t('No bookings.') }}</div>
               <div v-for="b in adminStore.inspect.bookings" :key="b.id" class="inspect-row">
                 <div class="ir-main">
                   <div class="ir-title">{{ b.guestName || '—' }}</div>
                   <div class="ir-sub">{{ aptNameFor(b.apartmentId) }} · {{ b.checkIn }} → {{ b.checkOut }}</div>
                 </div>
                 <div class="ir-right">
-                  <span v-if="b.status === 'cancelled'" class="badge badge-red">cancelled</span>
-                  <span v-else :class="['badge', payBadge(b.paymentStatus)]">{{ b.paymentStatus }}</span>
+                  <span v-if="b.status === 'cancelled'" class="badge badge-red">{{ t('cancelled') }}</span>
+                  <span v-else :class="['badge', payBadge(b.paymentStatus)]">{{ t(payStatusLabel(b.paymentStatus)) }}</span>
                   <span class="ir-amount">€{{ (b.totalPrice || 0).toLocaleString() }}</span>
                 </div>
               </div>
@@ -297,22 +297,22 @@
 
             <!-- Apartments -->
             <template v-else-if="inspectTab === 'apartments'">
-              <div v-if="!adminStore.inspect.apartments.length" class="text-muted text-sm empty-pad">No apartments.</div>
+              <div v-if="!adminStore.inspect.apartments.length" class="text-muted text-sm empty-pad">{{ t('No apartments.') }}</div>
               <div v-for="a in adminStore.inspect.apartments" :key="a.id" class="inspect-row">
                 <div class="ir-main">
                   <div class="ir-title">{{ a.name || '—' }}</div>
-                  <div class="ir-sub">{{ a.maxGuests || a.capacity || 1 }} guests · €{{ a.pricePerNight || 0 }}/night</div>
+                  <div class="ir-sub">{{ t('{n} guests · {price}/night', { n: (a.maxGuests || a.capacity || 1), price: '€' + (a.pricePerNight || 0) }) }}</div>
                 </div>
               </div>
             </template>
 
             <!-- Guests -->
             <template v-else>
-              <div v-if="!adminStore.inspect.guests.length" class="text-muted text-sm empty-pad">No guests.</div>
+              <div v-if="!adminStore.inspect.guests.length" class="text-muted text-sm empty-pad">{{ t('No guests.') }}</div>
               <div v-for="g in adminStore.inspect.guests" :key="g.id" class="inspect-row">
                 <div class="ir-main">
                   <div class="ir-title">{{ g.fullName || '—' }}</div>
-                  <div class="ir-sub">{{ g.phone || 'no phone' }}{{ g.country ? ' · ' + g.country : '' }}</div>
+                  <div class="ir-sub">{{ g.phone || t('no phone') }}{{ g.country ? ' · ' + g.country : '' }}</div>
                 </div>
               </div>
             </template>
@@ -329,6 +329,7 @@ import { useRouter } from 'vue-router'
 import { format } from 'date-fns'
 import { useAdminStore } from '@/stores/admin'
 import { useAuthStore } from '@/stores/auth'
+import { t } from '@/i18n'
 
 const adminStore = useAdminStore()
 const authStore = useAuthStore()
@@ -361,24 +362,25 @@ const iAmMain = computed(() =>
 
 async function toggleMain(u) {
   const next = !u.mainAdmin
-  if (next && !confirm(`Make ${u.username || u.email} a MAIN admin? Main admins are protected and can manage other admins.`)) return
-  if (!next && !confirm(`Remove main-admin status from ${u.username || u.email}?`)) return
+  const name = u.username || u.email
+  if (next && !confirm(t('Make {name} a MAIN admin? Main admins are protected and can manage other admins.', { name }))) return
+  if (!next && !confirm(t('Remove main-admin status from {name}?', { name }))) return
   try {
     await adminStore.setUserMainAdmin(u.id, next)
-    flash(next ? `${u.username || u.email} is now a main admin.` : `${u.username || u.email} is no longer a main admin.`)
+    flash(next ? t('{name} is now a main admin.', { name }) : t('{name} is no longer a main admin.', { name }))
   } catch (e) {
-    flash(`Could not change main-admin status: ${errText(e)}`, true)
+    flash(t('Could not change main-admin status: {err}', { err: errText(e) }), true)
   }
 }
 
 async function stepDown(u) {
-  if (!confirm('Step down from admin? You become a regular user and lose the Admin panel. Your data stays.')) return
+  if (!confirm(t('Step down from admin? You become a regular user and lose the Admin panel. Your data stays.'))) return
   try {
     await adminStore.setUserRole(u.id, 'user')
     await authStore.loadUserProfile(authStore.user.uid)
     router.push('/calendar')
   } catch (e) {
-    flash(`Could not step down: ${errText(e)}`, true)
+    flash(t('Could not step down: {err}', { err: errText(e) }), true)
   }
 }
 
@@ -394,7 +396,9 @@ function aptNameFor(id) {
 }
 
 const PAY_BADGES = { unpaid: 'badge-red', deposit_paid: 'badge-amber', partial: 'badge-blue', paid: 'badge-green', cancelled: 'badge-red' }
+const PAY_LABELS = { unpaid: 'Unpaid', deposit_paid: 'Deposit Paid', partial: 'Partially Paid', paid: 'Fully Paid', cancelled: 'Cancelled' }
 function payBadge(s) { return PAY_BADGES[s] || 'badge-amber' }
+function payStatusLabel(s) { return PAY_LABELS[s] || s }
 
 onUnmounted(() => {
   adminStore.unsubscribeAll()
@@ -438,7 +442,7 @@ function flash(msg, isError = false) {
 function errText(e) {
   const m = e?.code || e?.message || String(e || 'unknown error')
   return /permission|insufficient/i.test(m)
-    ? 'permission denied — re-deploy the Firestore rules (firebase deploy --only firestore:rules)'
+    ? t('permission denied — re-deploy the Firestore rules (firebase deploy --only firestore:rules)')
     : m
 }
 
@@ -449,59 +453,61 @@ async function createCode() {
     copied.value = false
     newCodeIsAdmin.value = false
   } catch (e) {
-    flash(`Could not generate code: ${errText(e)}`, true)
+    flash(t('Could not generate code: {err}', { err: errText(e) }), true)
   }
 }
 
 async function removeCode(code) {
-  if (!confirm(`Delete invite code ${code.code}? This can't be undone.`)) return
+  if (!confirm(t("Delete invite code {code}? This can't be undone.", { code: code.code }))) return
   try {
     if (newCode.value === code.code) newCode.value = ''
     await adminStore.deleteInviteCode(code.id)
-    flash(`Invite code ${code.code} deleted.`)
+    flash(t('Invite code {code} deleted.', { code: code.code }))
   } catch (e) {
-    flash(`Could not delete code: ${errText(e)}`, true)
+    flash(t('Could not delete code: {err}', { err: errText(e) }), true)
   }
 }
 
 async function toggleRole(u) {
   const nextRole = u.role === 'admin' ? 'user' : 'admin'
-  if (u.role === 'admin' && !confirm(`Remove admin access from ${u.username || u.email}?`)) return
+  const name = u.username || u.email
+  if (u.role === 'admin' && !confirm(t('Remove admin access from {name}?', { name }))) return
   try {
     await adminStore.setUserRole(u.id, nextRole)
-    flash(`${u.username || u.email} is now ${nextRole === 'admin' ? 'an admin' : 'a regular user'}.`)
+    flash(nextRole === 'admin' ? t('{name} is now an admin.', { name }) : t('{name} is now a regular user.', { name }))
   } catch (e) {
-    flash(`Could not change role: ${errText(e)}`, true)
+    flash(t('Could not change role: {err}', { err: errText(e) }), true)
   }
 }
 
 async function toggleDisabled(u) {
   const next = !u.disabled
-  if (next && !confirm(`Disable ${u.username || u.email}? They won't be able to sign in until you enable them again. Their data is kept.`)) return
+  const name = u.username || u.email
+  if (next && !confirm(t("Disable {name}? They won't be able to sign in until you enable them again. Their data is kept.", { name }))) return
   try {
     await adminStore.setUserDisabled(u.id, next)
-    flash(next ? `${u.username || u.email} has been disabled.` : `${u.username || u.email} has been enabled.`)
+    flash(next ? t('{name} has been disabled.', { name }) : t('{name} has been enabled.', { name }))
   } catch (e) {
-    flash(`Could not ${next ? 'disable' : 'enable'} ${u.username || u.email}: ${errText(e)}`, true)
+    flash(t('Could not update {name}: {err}', { name, err: errText(e) }), true)
   }
 }
 
 async function removeUser(u) {
   const name = u.username || u.email
-  if (!confirm(`Delete ${name}?\n\nThis removes their account — they can no longer sign in. This cannot be undone.`)) return
+  if (!confirm(t('Delete {name}? This removes their account — they can no longer sign in. This cannot be undone.', { name }))) return
   try {
     await adminStore.deleteUser(u.id)
-    flash(`${name} has been deleted.`)
+    flash(t('{name} has been deleted.', { name }))
   } catch (e) {
-    flash(`Could not delete ${name}: ${errText(e)}`, true)
+    flash(t('Could not delete {name}: {err}', { name, err: errText(e) }), true)
   }
 }
 
 async function resetUserPassword(u) {
   const res = await authStore.resetPassword(u.email)
   flash(res.success
-    ? `Reset link sent to ${u.email} — tell them to check the spam folder too.`
-    : (res.error || 'Could not send reset email.'))
+    ? t('Reset link sent to {email} — tell them to check the spam folder too.', { email: u.email })
+    : (res.error || t('Could not send reset email.')))
 }
 
 function openNotes(u) {
@@ -547,7 +553,7 @@ function formatDate(ts) {
 }
 
 function formatDateTime(ts) {
-  if (!ts) return 'just now'
+  if (!ts) return t('just now')
   const d = ts.toDate ? ts.toDate() : new Date(ts)
   return format(d, 'dd MMM yyyy, HH:mm')
 }

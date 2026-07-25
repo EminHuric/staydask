@@ -5,92 +5,93 @@
       <!-- Logo -->
       <div class="login-logo">
         <div class="logo-icon">🏠</div>
-        <div>
+        <div class="login-logo-text">
           <div class="serif" style="font-size:1.6rem; color: var(--text)">RMS</div>
-          <div class="text-xs text-muted">Reservation Management System</div>
+          <div class="text-xs text-muted">{{ t('Reservation Management System') }}</div>
         </div>
+        <LanguageToggle />
       </div>
 
       <!-- Tab switcher -->
       <div class="tab-bar">
         <button :class="['tab-btn', { active: mode === 'invite' }]" @click="mode = 'invite'">
-          🎟 Invite Code
+          {{ t('🎟 Invite Code') }}
         </button>
         <button :class="['tab-btn', { active: mode === 'login' }]" @click="mode = 'login'">
-          🔑 Login
+          {{ t('🔑 Login') }}
         </button>
       </div>
 
       <!-- INVITE CODE FORM -->
       <form v-if="mode === 'invite'" @submit.prevent="handleInvite" class="login-form">
         <div class="form-group">
-          <label class="form-label">Invite Code</label>
+          <label class="form-label">{{ t('Invite Code') }}</label>
           <input v-model="inviteForm.code" class="form-input code-input"
             placeholder="XXXXXXXX" maxlength="8" autocomplete="off" required />
         </div>
         <div class="form-group">
-          <label class="form-label">Your Name</label>
+          <label class="form-label">{{ t('Your Name') }}</label>
           <input v-model="inviteForm.username" class="form-input"
             placeholder="yourname" required />
         </div>
         <div class="form-group">
-          <label class="form-label">Email</label>
+          <label class="form-label">{{ t('Email') }}</label>
           <input v-model="inviteForm.email" class="form-input" type="email"
             placeholder="you@email.com" required />
         </div>
         <div class="form-group">
-          <label class="form-label">Create Password</label>
+          <label class="form-label">{{ t('Create Password') }}</label>
           <input v-model="inviteForm.password" type="password" class="form-input"
-            placeholder="min. 6 characters" minlength="6" required />
+            :placeholder="t('min. 6 characters')" minlength="6" required />
         </div>
         <div v-if="error" class="error-msg">{{ error }}</div>
         <button type="submit" class="btn btn-primary w-full" :disabled="inviteLoading">
-          <span v-if="inviteLoading">Creating account…</span>
-          <span v-else>Create My Workspace →</span>
+          <span v-if="inviteLoading">{{ t('Creating account…') }}</span>
+          <span v-else>{{ t('Create My Workspace →') }}</span>
         </button>
       </form>
 
       <!-- LOGIN FORM -->
       <form v-else @submit.prevent="handleLogin" class="login-form">
         <div class="form-group">
-          <label class="form-label">Email</label>
+          <label class="form-label">{{ t('Email') }}</label>
           <input v-model="loginForm.username" class="form-input" type="email"
             placeholder="you@email.com" required />
         </div>
         <div class="form-group">
-          <label class="form-label">Password</label>
+          <label class="form-label">{{ t('Password') }}</label>
           <input v-model="loginForm.password" type="password" class="form-input"
-            placeholder="your password" required />
+            :placeholder="t('your password')" required />
         </div>
         <div v-if="error" class="error-msg">{{ error }}</div>
         <button type="submit" class="btn btn-primary w-full" :disabled="loginLoading">
-          <span v-if="loginLoading">Signing in…</span>
-          <span v-else>Sign In →</span>
+          <span v-if="loginLoading">{{ t('Signing in…') }}</span>
+          <span v-else>{{ t('Sign In →') }}</span>
         </button>
         <button type="button" class="link-btn" @click="showForgot = !showForgot">
-          Forgot password?
+          {{ t('Forgot password?') }}
         </button>
       </form>
 
       <!-- Forgot password -->
       <div v-if="mode === 'login' && showForgot" class="forgot-box">
         <template v-if="!resetSent">
-          <p class="text-xs text-muted mb-2">We'll email you a link to reset your password.</p>
+          <p class="text-xs text-muted mb-2">{{ t("We'll email you a link to reset your password.") }}</p>
           <div class="forgot-row">
             <input v-model="resetEmail" class="form-input" type="email" placeholder="you@email.com" />
             <button class="btn btn-ghost btn-sm" :disabled="resetLoading" @click="handleReset">
-              {{ resetLoading ? 'Sending…' : 'Send' }}
+              {{ resetLoading ? t('Sending…') : t('Send') }}
             </button>
           </div>
           <div v-if="resetError" class="error-msg mt-2">{{ resetError }}</div>
         </template>
         <p v-else class="text-xs" style="color: var(--green)">
-          ✓ Reset link sent — check your inbox and spam folder.
+          {{ t('✓ Reset link sent — check your inbox and spam folder.') }}
         </p>
       </div>
 
       <p class="login-footer">
-        Need access? Contact your administrator for an invite code.
+        {{ t('Need access? Contact your administrator for an invite code.') }}
       </p>
     </div>
   </div>
@@ -100,6 +101,8 @@
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import LanguageToggle from '@/components/LanguageToggle.vue'
+import { t } from '@/i18n'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -186,6 +189,7 @@ async function handleReset() {
   gap: 0.75rem;
   margin-bottom: 2rem;
 }
+.login-logo-text { flex: 1; min-width: 0; }
 
 .logo-icon {
   width: 48px;

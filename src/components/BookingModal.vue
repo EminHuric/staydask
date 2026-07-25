@@ -6,7 +6,7 @@
       <!-- Header -->
       <div class="modal-header">
         <div>
-          <div class="modal-title-text">{{ booking ? 'Edit Reservation' : 'New Reservation' }}</div>
+          <div class="modal-title-text">{{ booking ? t('Edit Reservation') : t('New Reservation') }}</div>
           <div v-if="booking?.reservationId" class="reservation-id">{{ booking.reservationId }}</div>
         </div>
         <button class="icon-btn" @click="$emit('close')">✕</button>
@@ -16,10 +16,10 @@
 
         <!-- ── Guest ──────────────────────────────────────────────── -->
         <div class="form-section">
-          <div class="section-label">Guest</div>
+          <div class="section-label">{{ t('Guest') }}</div>
           <div class="form-group" style="position:relative">
-            <label class="form-label">Full Name *</label>
-            <input v-model="form.guestName" class="form-input" placeholder="Search existing or type new name…"
+            <label class="form-label">{{ t('Full Name *') }}</label>
+            <input v-model="form.guestName" class="form-input" :placeholder="t('Search existing or type new name…')"
               required autocomplete="off" @input="searchGuests" @focus="showSugg = true" />
             <div v-if="showSugg && suggestions.length" class="suggestions-drop">
               <button v-for="g in suggestions" :key="g.id" type="button"
@@ -31,96 +31,96 @@
           </div>
           <div class="form-row">
             <div class="form-group flex-1">
-              <label class="form-label">Phone</label>
-              <input v-model="form.phone" class="form-input" placeholder="+385 91 234 5678" />
+              <label class="form-label">{{ t('Phone') }}</label>
+              <input v-model="form.phone" class="form-input" placeholder="+381 61 234 5678" />
             </div>
             <div class="form-group flex-1">
-              <label class="form-label">Country / City</label>
-              <input v-model="form.origin" class="form-input" placeholder="e.g. Zagreb, Croatia" />
+              <label class="form-label">{{ t('Country / City') }}</label>
+              <input v-model="form.origin" class="form-input" :placeholder="t('e.g. Zagreb, Croatia')" />
             </div>
           </div>
         </div>
 
         <!-- ── Booking ────────────────────────────────────────────── -->
         <div class="form-section">
-          <div class="section-label">Reservation</div>
+          <div class="section-label">{{ t('Reservation') }}</div>
           <div class="form-group">
-            <label class="form-label">Apartment *</label>
+            <label class="form-label">{{ t('Apartment *') }}</label>
             <select v-model="form.apartmentId" class="form-input" required @change="fillDefaultPrice">
-              <option value="" disabled>Select apartment…</option>
+              <option value="" disabled>{{ t('Select apartment…') }}</option>
               <option v-for="apt in apartments" :key="apt.id" :value="apt.id">{{ apt.name }}</option>
             </select>
           </div>
           <div class="form-row">
             <div class="form-group flex-1">
-              <label class="form-label">Check-in *</label>
+              <label class="form-label">{{ t('Check-in *') }}</label>
               <input v-model="form.checkIn" class="form-input" type="date" required />
             </div>
             <div class="form-group flex-1">
-              <label class="form-label">Check-out *</label>
+              <label class="form-label">{{ t('Check-out *') }}</label>
               <input v-model="form.checkOut" class="form-input" type="date" required />
             </div>
           </div>
           <!-- Nights summary -->
           <div v-if="nights > 0" class="nights-chip">
-            {{ nights }} night{{ nights !== 1 ? 's' : '' }}
+            {{ nightsLabel }}
           </div>
           <!-- Live availability for the chosen apartment + dates -->
           <div v-if="form.apartmentId && nights > 0" class="avail" :class="availability ? 'avail-busy' : 'avail-free'">
-            <span v-if="availability">✗ Taken — {{ availability.guestName }} is booked {{ fmt(availability.checkIn) }} → {{ fmt(availability.checkOut) }}</span>
-            <span v-else>✓ Available for these dates</span>
+            <span v-if="availability">{{ t('✗ Taken — {guest} is booked {a} → {b}', { guest: availability.guestName, a: fmt(availability.checkIn), b: fmt(availability.checkOut) }) }}</span>
+            <span v-else>{{ t('✓ Available for these dates') }}</span>
           </div>
         </div>
 
         <!-- ── Pricing ────────────────────────────────────────────── -->
         <div class="form-section">
-          <div class="section-label">Pricing</div>
+          <div class="section-label">{{ t('Pricing') }}</div>
           <div class="form-row">
             <div class="form-group flex-1">
-              <label class="form-label">Price / Night (€)</label>
+              <label class="form-label">{{ t('Price / Night (€)') }}</label>
               <input v-model.number="form.pricePerNight" class="form-input" type="number" min="0" step="0.01" />
             </div>
             <div class="form-group flex-1">
-              <label class="form-label">Deposit Amount (€)</label>
+              <label class="form-label">{{ t('Deposit Amount (€)') }}</label>
               <input v-model.number="form.depositAmount" class="form-input" type="number" min="0" step="0.01" />
             </div>
           </div>
           <!-- Price summary -->
           <div v-if="nights > 0" class="price-summary">
             <div class="price-row">
-              <span>Total ({{ nights }}n × €{{ form.pricePerNight }})</span>
+              <span>{{ t('Total ({n}n × €{price})', { n: nights, price: form.pricePerNight }) }}</span>
               <span class="font-bold" style="color:var(--text)">€{{ totalPrice.toFixed(2) }}</span>
             </div>
             <div class="price-row">
-              <span>Deposit</span>
+              <span>{{ t('Deposit') }}</span>
               <span>€{{ (form.depositAmount || 0).toFixed(2) }}</span>
             </div>
             <div class="price-row" style="color:var(--text-3)">
-              <span>Remaining after deposit</span>
+              <span>{{ t('Remaining after deposit') }}</span>
               <span>€{{ Math.max(0, totalPrice - (form.depositAmount || 0)).toFixed(2) }}</span>
             </div>
           </div>
           <label class="checkbox-label">
             <input type="checkbox" v-model="form.depositPaid" style="accent-color:var(--accent)" />
-            <span class="form-label" style="margin:0">Deposit received / paid</span>
+            <span class="form-label" style="margin:0">{{ t('Deposit received / paid') }}</span>
           </label>
         </div>
 
         <!-- ── Notes & Tags ──────────────────────────────────────── -->
         <div class="form-section">
-          <div class="section-label">Notes & Tags</div>
+          <div class="section-label">{{ t('Notes & Tags') }}</div>
           <div class="form-group">
-            <label class="form-label">Private Notes</label>
+            <label class="form-label">{{ t('Private Notes') }}</label>
             <textarea v-model="form.notes" class="form-input" rows="2"
-              placeholder="VIP guest, late arrival, baby bed needed…"></textarea>
+              :placeholder="t('VIP guest, late arrival, baby bed needed…')"></textarea>
           </div>
           <div class="form-group">
-            <label class="form-label">Tags</label>
+            <label class="form-label">{{ t('Tags') }}</label>
             <div class="tags-grid">
-              <label v-for="t in TAGS" :key="t.value" class="tag-option"
-                :class="{ active: form.tags.includes(t.value) }"
-                @click.prevent="toggleTag(t.value)">
-                {{ t.label }}
+              <label v-for="tag in TAGS" :key="tag.value" class="tag-option"
+                :class="{ active: form.tags.includes(tag.value) }"
+                @click.prevent="toggleTag(tag.value)">
+                {{ t(tag.label) }}
               </label>
             </div>
           </div>
@@ -140,18 +140,18 @@
           <div class="footer-left">
             <button v-if="booking && booking.status !== 'cancelled'"
               type="button" class="btn btn-ghost btn-sm" @click="$emit('payments')">
-              💰 Payments
+              {{ t('💰 Payments') }}
             </button>
             <button v-if="booking && booking.status !== 'cancelled'"
               type="button" class="btn btn-danger btn-sm" @click="showCancelConfirm = true">
-              Cancel
+              {{ t('Cancel') }}
             </button>
-            <span v-if="booking?.status === 'cancelled'" class="badge badge-red">Cancelled</span>
+            <span v-if="booking?.status === 'cancelled'" class="badge badge-red">{{ t('Cancelled') }}</span>
           </div>
           <div class="footer-right">
-            <button type="button" class="btn btn-ghost" @click="$emit('close')">Close</button>
+            <button type="button" class="btn btn-ghost" @click="$emit('close')">{{ t('Close') }}</button>
             <button type="submit" class="btn btn-primary" :disabled="saving">
-              {{ saving ? 'Saving…' : (booking ? 'Save Changes' : 'Create Reservation') }}
+              {{ saving ? t('Saving…') : (booking ? t('Save Changes') : t('Create Reservation')) }}
             </button>
           </div>
         </div>
@@ -160,15 +160,15 @@
       <!-- Cancel confirm overlay -->
       <div v-if="showCancelConfirm" class="inner-overlay">
         <div class="inner-confirm">
-          <h3>Cancel Reservation?</h3>
+          <h3>{{ t('Cancel Reservation?') }}</h3>
           <p class="text-sm text-muted" style="margin-top:.5rem">
-            The reservation will be marked as <strong>Cancelled</strong> and the apartment will be
-            freed. Payment history is preserved. This cannot be undone.
+            {{ t('The reservation will be marked as') }} <strong>{{ t('Cancelled') }}</strong>
+            {{ t('and the apartment will be freed. Payment history is preserved. This cannot be undone.') }}
           </p>
           <div class="flex gap-3 mt-4 justify-end">
-            <button class="btn btn-ghost btn-sm" @click="showCancelConfirm = false">Keep</button>
+            <button class="btn btn-ghost btn-sm" @click="showCancelConfirm = false">{{ t('Keep') }}</button>
             <button class="btn btn-danger btn-sm" @click="doCancel" :disabled="saving">
-              Yes, Cancel It
+              {{ t('Yes, Cancel It') }}
             </button>
           </div>
         </div>
@@ -183,6 +183,7 @@ import { differenceInDays, parseISO, format } from 'date-fns'
 import { useBookingsStore } from '@/stores/bookings'
 import { useApartmentsStore } from '@/stores/apartments'
 import { useGuestsStore } from '@/stores/guests'
+import { t } from '@/i18n'
 
 const props = defineProps({
   booking: { type: Object, default: null },
@@ -288,6 +289,9 @@ const nights = computed(() => {
   return n > 0 ? n : 0
 })
 const totalPrice = computed(() => nights.value * (form.value.pricePerNight || 0))
+const nightsLabel = computed(() =>
+  nights.value === 1 ? t('{n} night', { n: 1 }) : t('{n} nights', { n: nights.value })
+)
 
 // Live conflict check for the selected apartment + dates (excludes this booking
 // when editing). Null = the dates are free.
@@ -302,7 +306,7 @@ function fmt(d) { return d ? format(parseISO(d), 'dd MMM') : '' }
 async function save() {
   errorMsg.value = ''
   conflictMsg.value = ''
-  if (nights.value <= 0) { errorMsg.value = 'Check-out must be after check-in.'; return }
+  if (nights.value <= 0) { errorMsg.value = t('Check-out must be after check-in.'); return }
   saving.value = true
   try {
     // Upsert guest record
@@ -335,7 +339,7 @@ async function save() {
     emit('close')
   } catch (e) {
     if (e.isConflict) conflictMsg.value = e.message
-    else errorMsg.value = e.message || 'Failed to save.'
+    else errorMsg.value = e.message || t('Failed to save.')
   }
   saving.value = false
 }

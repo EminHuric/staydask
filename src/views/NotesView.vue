@@ -3,9 +3,9 @@
   <div class="page">
     <div class="page-header">
       <div>
-        <h1>Notes</h1>
+        <h1>{{ t('Notes') }}</h1>
         <p class="text-muted text-sm mt-2">
-          Your private notes. Only you and the platform administrator can see them.
+          {{ t('Your private notes. Only you and the platform administrator can see them.') }}
         </p>
       </div>
     </div>
@@ -16,20 +16,20 @@
         v-model="draft"
         class="form-input note-input"
         rows="3"
-        placeholder="Write a note, reminder or message for the admin…"
+        :placeholder="t('Write a note, reminder or message for the admin…')"
         @keydown.ctrl.enter="add"
       ></textarea>
       <div class="add-row">
-        <span class="text-xs text-muted hint">Tip: Ctrl + Enter to save</span>
-        <button class="btn btn-primary" :disabled="!draft.trim()" @click="add">Add note</button>
+        <span class="text-xs text-muted hint">{{ t('Tip: Ctrl + Enter to save') }}</span>
+        <button class="btn btn-primary" :disabled="!draft.trim()" @click="add">{{ t('Add note') }}</button>
       </div>
     </div>
 
     <!-- Empty state -->
     <div v-if="notesStore.notes.length === 0 && !notesStore.loading" class="empty-card">
       <div class="empty-icon">📝</div>
-      <h3>No notes yet</h3>
-      <p class="text-muted text-sm">Add a note above — anything you want to remember or share with the admin.</p>
+      <h3>{{ t('No notes yet') }}</h3>
+      <p class="text-muted text-sm">{{ t('Add a note above — anything you want to remember or share with the admin.') }}</p>
     </div>
 
     <!-- Notes list -->
@@ -42,12 +42,12 @@
       >
         <div class="note-head">
           <span class="note-author">
-            <template v-if="n.authorId === authStore.user?.uid">You</template>
+            <template v-if="n.authorId === authStore.user?.uid">{{ t('You') }}</template>
             <template v-else>{{ n.authorName }}</template>
             <span
               v-if="n.authorRole === 'admin' && n.authorId !== authStore.user?.uid"
               class="badge badge-amber"
-            >Admin</span>
+            >{{ t('Admin') }}</span>
           </span>
           <span class="note-date">{{ formatDateTime(n.createdAt) }}</span>
         </div>
@@ -55,7 +55,7 @@
         <button
           v-if="n.authorId === authStore.user?.uid || authStore.isAdmin"
           class="note-del"
-          title="Delete note"
+          :title="t('Delete note')"
           @click="remove(n.id)"
         >🗑</button>
       </div>
@@ -68,6 +68,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { format } from 'date-fns'
 import { useNotesStore } from '@/stores/notes'
 import { useAuthStore } from '@/stores/auth'
+import { t } from '@/i18n'
 
 const notesStore = useNotesStore()
 const authStore = useAuthStore()
@@ -89,7 +90,7 @@ async function remove(id) {
 }
 
 function formatDateTime(ts) {
-  if (!ts) return 'just now'
+  if (!ts) return t('just now')
   const d = ts.toDate ? ts.toDate() : new Date(ts)
   return format(d, 'dd MMM yyyy, HH:mm')
 }

@@ -13,7 +13,7 @@
       <span class="tab-icon" :class="{ pulse: item.to === '/dashboard' && hasNotifications }">
         {{ item.icon }}
       </span>
-      <span class="tab-label">{{ item.label }}</span>
+      <span class="tab-label">{{ t(item.label) }}</span>
       <span v-if="isActive(item)" class="tab-indicator"></span>
     </router-link>
 
@@ -22,7 +22,7 @@
       <span class="tab-icon">
         <span class="avatar-mini">{{ userInitial }}</span>
       </span>
-      <span class="tab-label">Profile</span>
+      <span class="tab-label">{{ t('Profile') }}</span>
       <span v-if="profileOpen" class="tab-indicator"></span>
     </button>
 
@@ -33,19 +33,22 @@
         <div class="sheet-user">
           <div class="sheet-avatar">{{ userInitial }}</div>
           <div>
-            <div class="sheet-name">{{ authStore.userProfile?.username || authStore.userProfile?.email || 'User' }}</div>
-            <div class="sheet-role">{{ authStore.isAdmin ? 'Administrator' : 'Workspace Owner' }}</div>
+            <div class="sheet-name">{{ authStore.userProfile?.username || authStore.userProfile?.email || t('User') }}</div>
+            <div class="sheet-role">{{ authStore.isAdmin ? t('Administrator') : t('Workspace Owner') }}</div>
           </div>
+        </div>
+        <div class="sheet-lang-row">
+          <LanguageToggle />
         </div>
         <div class="sheet-actions">
           <router-link to="/notes" class="sheet-btn" @click="profileOpen = false">
-            <span>📝</span> Notes
+            <span>📝</span> {{ t('Notes') }}
           </router-link>
           <router-link v-if="authStore.isAdmin" to="/admin" class="sheet-btn" @click="profileOpen = false">
-            <span>⚙️</span> Admin Panel
+            <span>⚙️</span> {{ t('Admin Panel') }}
           </router-link>
           <button class="sheet-btn danger" @click="handleLogout">
-            <span>🚪</span> Sign Out
+            <span>🚪</span> {{ t('Sign Out') }}
           </button>
         </div>
       </div>
@@ -61,6 +64,8 @@ import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useBookingsStore } from '@/stores/bookings'
+import LanguageToggle from '@/components/LanguageToggle.vue'
+import { t } from '@/i18n'
 
 const route = useRoute()
 const router = useRouter()
@@ -283,6 +288,7 @@ async function handleLogout() {
   margin-top: 2px;
 }
 
+.sheet-lang-row { display: flex; justify-content: center; padding: 0 0 0.75rem; }
 .sheet-actions { display: flex; flex-direction: column; gap: 0.4rem; }
 
 .sheet-btn {

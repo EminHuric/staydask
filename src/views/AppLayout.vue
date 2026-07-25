@@ -15,10 +15,10 @@
         <router-link v-for="item in navItems" :key="item.to"
           :to="item.to" class="nav-item" @click="sidebarOpen = false">
           <span class="nav-icon">{{ item.icon }}</span>
-          <span>{{ item.label }}</span>
+          <span>{{ t(item.label) }}</span>
         </router-link>
         <router-link v-if="authStore.isAdmin" to="/admin" class="nav-item" @click="sidebarOpen = false">
-          <span class="nav-icon">⚙️</span> Admin
+          <span class="nav-icon">⚙️</span> {{ t('Admin') }}
         </router-link>
       </nav>
 
@@ -26,11 +26,12 @@
         <div class="user-pill">
           <div class="user-avatar">{{ userInitial }}</div>
           <div class="user-info">
-            <div class="user-name">{{ authStore.userProfile?.username || authStore.userProfile?.email || 'User' }}</div>
-            <div class="user-role">{{ authStore.isAdmin ? 'Admin' : 'Owner' }}</div>
+            <div class="user-name">{{ authStore.userProfile?.username || authStore.userProfile?.email || t('User') }}</div>
+            <div class="user-role">{{ authStore.isAdmin ? t('Admin') : t('Owner') }}</div>
           </div>
         </div>
-        <button class="btn btn-ghost btn-sm logout-btn" @click="handleLogout">Sign out</button>
+        <div class="sidebar-lang"><LanguageToggle /></div>
+        <button class="btn btn-ghost btn-sm logout-btn" @click="handleLogout">{{ t('Sign out') }}</button>
       </div>
     </aside>
 
@@ -55,8 +56,9 @@
         <div class="page-title show-desktop">{{ currentPageTitle }}</div>
         <div class="top-bar-right">
           <GlobalSearch />
+          <LanguageToggle class="hide-mobile-lang" />
           <NotificationsBell />
-          <span class="live-badge">● Live</span>
+          <span class="live-badge">● {{ t('Live') }}</span>
         </div>
       </header>
 
@@ -77,6 +79,8 @@ import { useAuthStore } from '../stores/auth'
 import GlobalSearch from '@/components/GlobalSearch.vue'
 import BottomNav from '@/components/BottomNav.vue'
 import NotificationsBell from '@/components/NotificationsBell.vue'
+import LanguageToggle from '@/components/LanguageToggle.vue'
+import { t } from '@/i18n'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -103,7 +107,7 @@ const titles = {
   Apartments: 'Apartments', Bookings: 'Reservations',
   Guests: 'Guest CRM', Notes: 'Notes', Analytics: 'Analytics & Finance', Admin: 'Admin Panel'
 }
-const currentPageTitle = computed(() => titles[route.name] || 'RMS')
+const currentPageTitle = computed(() => titles[route.name] ? t(titles[route.name]) : 'RMS')
 
 async function handleLogout() {
   await authStore.logout()
@@ -223,6 +227,7 @@ async function handleLogout() {
 .user-info { min-width: 0; }
 .user-name { font-size: 0.8rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .user-role { font-size: 0.65rem; color: var(--text-3); margin-top: 1px; }
+.sidebar-lang { display: flex; justify-content: center; }
 .logout-btn { width: 100%; justify-content: center; }
 
 /* ─────────────────────── Main content ────────────────────── */
@@ -336,6 +341,7 @@ async function handleLogout() {
   .hide-desktop { display: flex !important; }
   .show-desktop { display: none !important; }
   .live-badge { display: none; }
+  .hide-mobile-lang { display: none !important; }
 }
 
 @media (min-width: 769px) {

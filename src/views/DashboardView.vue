@@ -5,10 +5,10 @@
     <!-- Welcome bar -->
     <div class="welcome-bar">
       <div>
-        <h1 class="welcome-title">Good {{ timeOfDay }}, {{ authStore.userProfile?.username || 'there' }}</h1>
+        <h1 class="welcome-title">{{ greeting }}</h1>
         <p class="text-muted text-sm mt-2">{{ today }}</p>
       </div>
-      <router-link to="/calendar" class="btn btn-primary hide-mobile">Open Calendar</router-link>
+      <router-link to="/calendar" class="btn btn-primary hide-mobile">{{ t('Open Calendar') }}</router-link>
     </div>
 
     <!-- KPI cards -->
@@ -17,35 +17,35 @@
         <div class="kpi-icon">🏠</div>
         <div class="kpi-body">
           <div class="kpi-value">{{ apartments.length }}</div>
-          <div class="kpi-label">Apartments</div>
+          <div class="kpi-label">{{ t('Apartments') }}</div>
         </div>
       </div>
       <div class="kpi-card">
         <div class="kpi-icon">📋</div>
         <div class="kpi-body">
           <div class="kpi-value">{{ activeBookings.length }}</div>
-          <div class="kpi-label">Active Now</div>
+          <div class="kpi-label">{{ t('Active Now') }}</div>
         </div>
       </div>
       <div class="kpi-card">
         <div class="kpi-icon">💰</div>
         <div class="kpi-body">
           <div class="kpi-value">€{{ bookingsStore.totalRevenue.toLocaleString() }}</div>
-          <div class="kpi-label">Expected Revenue</div>
+          <div class="kpi-label">{{ t('Expected Revenue') }}</div>
         </div>
       </div>
       <div class="kpi-card accent">
         <div class="kpi-icon">✅</div>
         <div class="kpi-body">
           <div class="kpi-value">€{{ bookingsStore.totalCollected.toLocaleString() }}</div>
-          <div class="kpi-label">Collected</div>
+          <div class="kpi-label">{{ t('Collected') }}</div>
         </div>
       </div>
       <div class="kpi-card warning">
         <div class="kpi-icon">⏳</div>
         <div class="kpi-body">
           <div class="kpi-value">€{{ bookingsStore.totalOutstanding.toLocaleString() }}</div>
-          <div class="kpi-label">Outstanding</div>
+          <div class="kpi-label">{{ t('Outstanding') }}</div>
         </div>
       </div>
     </div>
@@ -56,12 +56,12 @@
       <!-- Smart notifications -->
       <div class="card notifications-card">
         <div class="card-header">
-          <h2>Notifications</h2>
+          <h2>{{ t('Notifications') }}</h2>
           <span v-if="notifications.length" class="notif-count">{{ notifications.length }}</span>
         </div>
         <div v-if="notifications.length === 0" class="empty-notif">
           <span style="font-size:1.5rem">✓</span>
-          <p class="text-muted text-sm">All clear for today!</p>
+          <p class="text-muted text-sm">{{ t('All clear for today!') }}</p>
         </div>
         <div v-else class="notif-list">
           <div v-for="(n, i) in notifications" :key="i"
@@ -82,17 +82,17 @@
       <!-- Active bookings today -->
       <div class="card">
         <div class="card-header">
-          <h2>Active Guests</h2>
-          <router-link to="/bookings?status=active" class="text-sm text-accent">All →</router-link>
+          <h2>{{ t('Active Guests') }}</h2>
+          <router-link to="/bookings?status=active" class="text-sm text-accent">{{ t('All →') }}</router-link>
         </div>
-        <div v-if="activeBookings.length === 0" class="empty-state">No guests checked in right now.</div>
+        <div v-if="activeBookings.length === 0" class="empty-state">{{ t('No guests checked in right now.') }}</div>
         <div v-else class="active-list">
           <div v-for="b in activeBookings.slice(0, 6)" :key="b.id"
             class="active-row" @click="openBooking(b)">
             <div class="active-avatar">{{ initials(b.guestName) }}</div>
             <div class="active-info">
               <div class="font-medium text-sm" style="color:var(--text)">{{ b.guestName }}</div>
-              <div class="text-xs text-muted">{{ aptName(b.apartmentId) }} · leaves {{ formatDate(b.checkOut) }}</div>
+              <div class="text-xs text-muted">{{ aptName(b.apartmentId) }} · {{ t('leaves {date}', { date: formatDate(b.checkOut) }) }}</div>
             </div>
             <span :class="['badge', payBadge(b.paymentStatus)]" style="font-size:.65rem">{{ payLabel(b.paymentStatus) }}</span>
           </div>
@@ -104,10 +104,10 @@
     <div class="two-col mb-6">
       <div class="card">
         <div class="card-header">
-          <h2>Arriving Today</h2>
+          <h2>{{ t('Arriving Today') }}</h2>
           <span class="badge badge-green">{{ arrivalsToday.length }}</span>
         </div>
-        <div v-if="arrivalsToday.length === 0" class="empty-state">No arrivals today.</div>
+        <div v-if="arrivalsToday.length === 0" class="empty-state">{{ t('No arrivals today.') }}</div>
         <div v-else class="mini-list">
           <div v-for="b in arrivalsToday" :key="b.id" class="mini-row" @click="openBooking(b)">
             <span class="mini-dot" style="background:var(--green)"></span>
@@ -121,10 +121,10 @@
       </div>
       <div class="card">
         <div class="card-header">
-          <h2>Departing Today</h2>
+          <h2>{{ t('Departing Today') }}</h2>
           <span class="badge badge-amber">{{ departuresToday.length }}</span>
         </div>
-        <div v-if="departuresToday.length === 0" class="empty-state">No departures today.</div>
+        <div v-if="departuresToday.length === 0" class="empty-state">{{ t('No departures today.') }}</div>
         <div v-else class="mini-list">
           <div v-for="b in departuresToday" :key="b.id" class="mini-row" @click="openBooking(b)">
             <span class="mini-dot" style="background:var(--accent)"></span>
@@ -141,20 +141,20 @@
     <!-- Recent reservations -->
     <div class="card">
       <div class="card-header">
-        <h2>Recent Reservations</h2>
-        <router-link to="/bookings" class="text-sm text-accent">View all →</router-link>
+        <h2>{{ t('Recent Reservations') }}</h2>
+        <router-link to="/bookings" class="text-sm text-accent">{{ t('View all →') }}</router-link>
       </div>
-      <div v-if="recentBookings.length === 0" class="empty-state">No reservations yet.</div>
+      <div v-if="recentBookings.length === 0" class="empty-state">{{ t('No reservations yet.') }}</div>
       <div v-else class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Guest</th>
-              <th>Apartment</th>
-              <th>Check-in</th>
-              <th>Nights</th>
-              <th>Payment</th>
-              <th class="text-right">Total</th>
+              <th>{{ t('Guest') }}</th>
+              <th>{{ t('Apartment') }}</th>
+              <th>{{ t('Check-in') }}</th>
+              <th>{{ t('Nights') }}</th>
+              <th>{{ t('Payment') }}</th>
+              <th class="text-right">{{ t('Total') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -197,6 +197,7 @@ import { useApartmentsStore } from '../stores/apartments'
 import { useBookingsStore } from '../stores/bookings'
 import BookingModal from '@/components/BookingModal.vue'
 import PaymentPanel from '@/components/PaymentPanel.vue'
+import { t } from '@/i18n'
 
 const authStore = useAuthStore()
 const apartmentsStore = useApartmentsStore()
@@ -208,11 +209,11 @@ const activeBookings = computed(() => bookingsStore.activeBookings)
 const notifications = computed(() => bookingsStore.todayNotifications)
 
 const today = computed(() => format(new Date(), 'EEEE, d MMMM yyyy'))
-const timeOfDay = computed(() => {
+const greeting = computed(() => {
   const h = new Date().getHours()
-  if (h < 12) return 'morning'
-  if (h < 18) return 'afternoon'
-  return 'evening'
+  const g = h < 12 ? t('Good morning') : h < 18 ? t('Good afternoon') : t('Good evening')
+  const name = authStore.userProfile?.username
+  return name ? `${g}, ${name}` : g
 })
 
 const todayStr = format(new Date(), 'yyyy-MM-dd')
@@ -237,25 +238,25 @@ function initials(n) {
 
 const PAY_LABELS = { unpaid: 'Unpaid', deposit_paid: 'Deposit', partial: 'Partial', paid: 'Paid', cancelled: 'Cancelled' }
 const PAY_BADGES = { unpaid: 'badge-red', deposit_paid: 'badge-amber', partial: 'badge-blue', paid: 'badge-green', cancelled: 'badge-red' }
-function payLabel(s) { return PAY_LABELS[s] || s }
+function payLabel(s) { return t(PAY_LABELS[s] || s) }
 function payBadge(s) { return PAY_BADGES[s] || 'badge-amber' }
 
 const NOTIF_ICONS = { new: '🆕', arrival: '🛬', departure: '🛫', arriving_tomorrow: '🔔', payment_due: '💳', upcoming: '📅' }
 const NOTIF_BADGE_TEXT = { new: 'New', arrival: 'Today', departure: 'Today', arriving_tomorrow: 'Tomorrow', payment_due: 'Unpaid', upcoming: 'This week' }
 const NOTIF_BADGE = { new: 'badge-green', arrival: 'badge-green', departure: 'badge-amber', arriving_tomorrow: 'badge-blue', payment_due: 'badge-red', upcoming: 'badge-blue' }
 
-function notifIcon(t) { return NOTIF_ICONS[t] || '📌' }
-function notifBadgeText(t) { return NOTIF_BADGE_TEXT[t] || '' }
-function notifBadge(t) { return NOTIF_BADGE[t] || 'badge-amber' }
+function notifIcon(type) { return NOTIF_ICONS[type] || '📌' }
+function notifBadgeText(type) { return t(NOTIF_BADGE_TEXT[type] || '') }
+function notifBadge(type) { return NOTIF_BADGE[type] || 'badge-amber' }
 function notifText(n) {
   const b = n.booking
   const g = b.guestName
-  if (n.type === 'new') return `New reservation from ${g}`
-  if (n.type === 'arrival') return `${g} is checking in today`
-  if (n.type === 'departure') return `${g} is checking out today`
-  if (n.type === 'arriving_tomorrow') return `${g} arrives tomorrow`
-  if (n.type === 'payment_due') return `${g} — payment pending (€${((b.totalPrice||0)-(b.totalPaid||0)).toLocaleString()} owed)`
-  if (n.type === 'upcoming') return `${g} arrives on ${formatDate(b.checkIn)}`
+  if (n.type === 'new') return t('New reservation from {g}', { g })
+  if (n.type === 'arrival') return t('{g} is checking in today', { g })
+  if (n.type === 'departure') return t('{g} is checking out today', { g })
+  if (n.type === 'arriving_tomorrow') return t('{g} arrives tomorrow', { g })
+  if (n.type === 'payment_due') return t('{g} — payment pending ({amount} owed)', { g, amount: '€' + ((b.totalPrice||0)-(b.totalPaid||0)).toLocaleString() })
+  if (n.type === 'upcoming') return t('{g} arrives on {date}', { g, date: formatDate(b.checkIn) })
   return g
 }
 

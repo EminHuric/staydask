@@ -8,7 +8,7 @@
       <!-- Header -->
       <div class="panel-header">
         <div>
-          <div class="panel-title">Payments</div>
+          <div class="panel-title">{{ t('Payments') }}</div>
           <div class="panel-sub">{{ b.reservationId }}</div>
         </div>
         <button class="icon-btn" @click="$emit('close')">✕</button>
@@ -30,34 +30,34 @@
       <div class="fin-grid">
         <div class="fin-card">
           <div class="fin-value">€{{ (b.totalPrice || 0).toLocaleString() }}</div>
-          <div class="fin-label">Total</div>
+          <div class="fin-label">{{ t('Total') }}</div>
         </div>
         <div class="fin-card">
           <div class="fin-value text-green">€{{ (b.totalPaid || 0).toLocaleString() }}</div>
-          <div class="fin-label">Collected</div>
+          <div class="fin-label">{{ t('Collected') }}</div>
         </div>
         <div class="fin-card" :class="{ accent: remaining > 0 }">
           <div class="fin-value" :style="remaining > 0 ? 'color:var(--red)' : 'color:var(--green)'">
             €{{ remaining.toLocaleString() }}
           </div>
-          <div class="fin-label">Remaining</div>
+          <div class="fin-label">{{ t('Remaining') }}</div>
         </div>
       </div>
 
       <!-- One-tap quick actions -->
       <div v-if="b.status === 'cancelled'" class="cancelled-note">
-        Cannot add payments to a cancelled reservation.
+        {{ t('Cannot add payments to a cancelled reservation.') }}
       </div>
       <template v-else>
         <div v-if="remaining > 0 || depositDue > 0" class="quick-pay">
           <button v-if="depositDue > 0" class="btn btn-ghost quick-btn" :disabled="busy" @click="quickDeposit">
-            <span>Deposit paid</span><strong>€{{ depositDue.toLocaleString() }}</strong>
+            <span>{{ t('Deposit paid') }}</span><strong>€{{ depositDue.toLocaleString() }}</strong>
           </button>
           <button v-if="remaining > 0" class="btn btn-primary quick-btn" :disabled="busy" @click="quickPayFull">
-            <span>Mark fully paid</span><strong>€{{ remaining.toLocaleString() }}</strong>
+            <span>{{ t('Mark fully paid') }}</span><strong>€{{ remaining.toLocaleString() }}</strong>
           </button>
         </div>
-        <div v-else class="all-paid">✓ Fully paid</div>
+        <div v-else class="all-paid">{{ t('✓ Fully paid') }}</div>
       </template>
 
       <!-- Progress bar -->
@@ -65,41 +65,41 @@
         <div class="progress-bg">
           <div class="progress-fill" :style="{ width: progressPct + '%' }"></div>
         </div>
-        <span class="progress-label">{{ progressPct }}% paid</span>
+        <span class="progress-label">{{ t('{pct}% paid', { pct: progressPct }) }}</span>
       </div>
 
       <!-- Custom amount (tucked away — quick actions cover most cases) -->
       <details v-if="b.status !== 'cancelled'" class="custom-pay">
-        <summary>Enter a custom amount</summary>
+        <summary>{{ t('Enter a custom amount') }}</summary>
         <form @submit.prevent="submitPayment" class="add-payment-form">
           <div class="form-row">
             <div class="form-group flex-1">
-              <label class="form-label">Amount (€) *</label>
+              <label class="form-label">{{ t('Amount (€) *') }}</label>
               <input v-model.number="pForm.amount" class="form-input" type="number"
                 min="0.01" step="0.01" placeholder="0.00" required />
             </div>
             <div class="form-group flex-1">
-              <label class="form-label">Date *</label>
+              <label class="form-label">{{ t('Date *') }}</label>
               <input v-model="pForm.date" class="form-input" type="date" required />
             </div>
           </div>
           <div class="form-row">
             <div class="form-group flex-1">
-              <label class="form-label">Type</label>
+              <label class="form-label">{{ t('Type') }}</label>
               <select v-model="pForm.type" class="form-input">
-                <option value="payment">Payment</option>
-                <option value="deposit">Deposit</option>
-                <option value="refund">Refund</option>
+                <option value="payment">{{ t('Payment (type)') }}</option>
+                <option value="deposit">{{ t('Deposit') }}</option>
+                <option value="refund">{{ t('Refund') }}</option>
               </select>
             </div>
             <div class="form-group flex-1">
-              <label class="form-label">Note</label>
-              <input v-model="pForm.note" class="form-input" placeholder="e.g. Cash, Transfer…" />
+              <label class="form-label">{{ t('Note') }}</label>
+              <input v-model="pForm.note" class="form-input" :placeholder="t('e.g. Cash, Transfer…')" />
             </div>
           </div>
           <div v-if="payErr" class="error-banner">{{ payErr }}</div>
           <button type="submit" class="btn btn-primary w-full" :disabled="busy">
-            {{ busy ? 'Adding…' : '+ Add Payment' }}
+            {{ busy ? t('Adding…') : t('+ Add Payment') }}
           </button>
         </form>
       </details>
@@ -108,28 +108,28 @@
 
       <!-- Deposit line -->
       <div class="deposit-line">
-        <span class="text-sm text-muted">Deposit: €{{ (b.depositAmount || 0).toLocaleString() }}</span>
+        <span class="text-sm text-muted">{{ t('Deposit') }}: €{{ (b.depositAmount || 0).toLocaleString() }}</span>
         <span :class="['badge', b.depositPaid ? 'badge-green' : 'badge-red']" style="font-size:.7rem">
-          {{ b.depositPaid ? 'Deposit Paid' : 'Deposit Pending' }}
+          {{ b.depositPaid ? t('Deposit Paid') : t('Deposit Pending') }}
         </span>
       </div>
 
       <!-- Payment history -->
-      <div class="section-title">Payment History</div>
+      <div class="section-title">{{ t('Payment History') }}</div>
       <div v-if="!payments.length" class="empty-payments">
-        No payments recorded yet.
+        {{ t('No payments recorded yet.') }}
       </div>
       <div v-else class="payments-list">
         <div v-for="p in payments" :key="p.id" class="payment-row">
           <div class="payment-type-badge" :class="p.type === 'deposit' ? 'deposit' : (p.type === 'refund' ? 'refund' : 'payment')">
-            {{ p.type === 'deposit' ? 'DEP' : (p.type === 'refund' ? 'REF' : 'PMT') }}
+            {{ p.type === 'deposit' ? t('DEP') : (p.type === 'refund' ? t('REF') : t('PMT')) }}
           </div>
           <div class="payment-info">
             <div class="payment-date">{{ formatDate(p.date) }}</div>
             <div v-if="p.note" class="payment-note">{{ p.note }}</div>
           </div>
           <div class="payment-amount">€{{ (p.amount || 0).toLocaleString() }}</div>
-          <button class="remove-btn" @click="removePayment(p.id)" title="Remove payment">×</button>
+          <button class="remove-btn" @click="removePayment(p.id)" :title="t('Remove payment')">×</button>
         </div>
       </div>
     </div>
@@ -141,6 +141,7 @@ import { ref, computed } from 'vue'
 import { format, parseISO } from 'date-fns'
 import { useBookingsStore } from '@/stores/bookings'
 import { useApartmentsStore } from '@/stores/apartments'
+import { t } from '@/i18n'
 
 const props = defineProps({ booking: { type: Object, required: true } })
 defineEmits(['close'])
@@ -192,7 +193,7 @@ function formatDate(d) {
 }
 
 function statusLabel(s) {
-  return { unpaid: 'Unpaid', deposit_paid: 'Deposit Paid', partial: 'Partially Paid', paid: 'Fully Paid', cancelled: 'Cancelled' }[s] || s
+  return t({ unpaid: 'Unpaid', deposit_paid: 'Deposit Paid', partial: 'Partially Paid', paid: 'Fully Paid', cancelled: 'Cancelled' }[s] || s)
 }
 
 function statusBadge(s) {
@@ -205,7 +206,7 @@ const pForm = ref({ amount: remaining.value || '', date: today, type: 'payment',
 
 async function record({ amount, type, note }) {
   payErr.value = ''
-  if (!amount || amount <= 0) { payErr.value = 'Amount must be greater than 0.'; return false }
+  if (!amount || amount <= 0) { payErr.value = t('Amount must be greater than 0.'); return false }
   busy.value = true
   try {
     await bookingsStore.addPayment(props.booking.id, { amount: Number(amount), date: today, type, note })
@@ -219,11 +220,11 @@ async function record({ amount, type, note }) {
 }
 
 async function quickPayFull() {
-  await record({ amount: remaining.value, type: 'payment', note: 'Paid in full' })
+  await record({ amount: remaining.value, type: 'payment', note: t('Paid in full') })
 }
 
 async function quickDeposit() {
-  const ok = await record({ amount: depositDue.value, type: 'deposit', note: 'Deposit' })
+  const ok = await record({ amount: depositDue.value, type: 'deposit', note: t('Deposit') })
   if (ok) {
     try { await bookingsStore.updateBooking(props.booking.id, { depositPaid: true }) } catch { /* non-fatal */ }
   }

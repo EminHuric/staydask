@@ -3,8 +3,8 @@
   <div class="page">
     <div class="page-header">
       <div>
-        <h1>Analytics & Finance</h1>
-        <p class="text-muted text-sm mt-2">Full financial overview</p>
+        <h1>{{ t('Analytics & Finance') }}</h1>
+        <p class="text-muted text-sm mt-2">{{ t('Full financial overview') }}</p>
       </div>
       <div class="year-picker">
         <button class="btn btn-ghost btn-sm" @click="year--">←</button>
@@ -19,42 +19,42 @@
         <div class="fin-kpi-icon">📋</div>
         <div class="fin-kpi-body">
           <div class="fin-kpi-value">€{{ yearRevenue.toLocaleString() }}</div>
-          <div class="fin-kpi-label">Expected Revenue</div>
+          <div class="fin-kpi-label">{{ t('Expected Revenue') }}</div>
         </div>
       </div>
       <div class="fin-kpi green">
         <div class="fin-kpi-icon">✅</div>
         <div class="fin-kpi-body">
           <div class="fin-kpi-value">€{{ yearCollected.toLocaleString() }}</div>
-          <div class="fin-kpi-label">Total Collected</div>
+          <div class="fin-kpi-label">{{ t('Total Collected') }}</div>
         </div>
       </div>
       <div class="fin-kpi red">
         <div class="fin-kpi-icon">⏳</div>
         <div class="fin-kpi-body">
           <div class="fin-kpi-value">€{{ yearOutstanding.toLocaleString() }}</div>
-          <div class="fin-kpi-label">Outstanding Balance</div>
+          <div class="fin-kpi-label">{{ t('Outstanding Balance') }}</div>
         </div>
       </div>
       <div class="fin-kpi accent">
         <div class="fin-kpi-icon">🏨</div>
         <div class="fin-kpi-body">
           <div class="fin-kpi-value">{{ yearBookingCount }}</div>
-          <div class="fin-kpi-label">Reservations {{ year }}</div>
+          <div class="fin-kpi-label">{{ t('Reservations {year}', { year }) }}</div>
         </div>
       </div>
       <div class="fin-kpi">
         <div class="fin-kpi-icon">🌙</div>
         <div class="fin-kpi-body">
           <div class="fin-kpi-value">{{ yearNights }}</div>
-          <div class="fin-kpi-label">Nights Sold</div>
+          <div class="fin-kpi-label">{{ t('Nights Sold') }}</div>
         </div>
       </div>
       <div class="fin-kpi">
         <div class="fin-kpi-icon">📈</div>
         <div class="fin-kpi-body">
           <div class="fin-kpi-value">€{{ avgPerNight }}</div>
-          <div class="fin-kpi-label">Avg / Night</div>
+          <div class="fin-kpi-label">{{ t('Avg / Night') }}</div>
         </div>
       </div>
     </div>
@@ -63,7 +63,7 @@
     <div class="pay-status-row mb-6">
       <div v-for="s in paymentBreakdown" :key="s.key" :class="['pay-status-card', s.key]">
         <div class="pay-status-count">{{ s.count }}</div>
-        <div class="pay-status-label">{{ s.label }}</div>
+        <div class="pay-status-label">{{ t(s.label) }}</div>
         <div class="pay-status-amount">€{{ s.amount.toLocaleString() }}</div>
       </div>
     </div>
@@ -73,7 +73,7 @@
       <!-- Monthly chart -->
       <div class="card">
         <div class="card-header">
-          <h2>Monthly Revenue — {{ year }}</h2>
+          <h2>{{ t('Monthly Revenue — {year}', { year }) }}</h2>
         </div>
         <div class="bar-chart">
           <div v-for="(m, i) in monthlyData" :key="i" class="bar-col">
@@ -83,15 +83,15 @@
                   :class="{ current: i === currentMonth }"></div>
               </div>
             </div>
-            <div class="bar-label" :class="{ current: i === currentMonth }">{{ m.short }}</div>
+            <div class="bar-label" :class="{ current: i === currentMonth }">{{ t(m.short) }}</div>
           </div>
         </div>
       </div>
 
       <!-- Per-apartment breakdown -->
       <div class="card">
-        <div class="card-header"><h2>By Apartment</h2></div>
-        <div v-if="apartments.length === 0" class="empty-state">No apartments.</div>
+        <div class="card-header"><h2>{{ t('By Apartment') }}</h2></div>
+        <div v-if="apartments.length === 0" class="empty-state">{{ t('No apartments.') }}</div>
         <div v-else class="apt-list">
           <div v-for="apt in apartments" :key="apt.id" class="apt-row-item">
             <div class="apt-row-header">
@@ -109,8 +109,8 @@
               <div class="dual-fill collected" :style="{ width: aptRevenuePct(apt.id) + '%', background: apt.color || '#3b82f6' }"></div>
             </div>
             <div class="apt-row-meta">
-              <span>{{ aptBookingCount(apt.id) }} bookings · {{ aptNights(apt.id) }}n</span>
-              <span>{{ aptOccupancy(apt.id) }}% occ.</span>
+              <span>{{ t('{n} bookings · {nights}n', { n: aptBookingCount(apt.id), nights: aptNights(apt.id) }) }}</span>
+              <span>{{ t('{pct}% occ.', { pct: aptOccupancy(apt.id) }) }}</span>
             </div>
           </div>
         </div>
@@ -119,23 +119,23 @@
 
     <!-- Monthly table -->
     <div class="card mb-6">
-      <div class="card-header"><h2>Month-by-Month</h2></div>
+      <div class="card-header"><h2>{{ t('Month-by-Month') }}</h2></div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Month</th>
-              <th>Bookings</th>
-              <th>Nights</th>
-              <th>Avg/Night</th>
-              <th class="text-right">Expected</th>
-              <th class="text-right">Collected</th>
-              <th class="text-right">Outstanding</th>
+              <th>{{ t('Month') }}</th>
+              <th>{{ t('Bookings') }}</th>
+              <th>{{ t('Nights') }}</th>
+              <th>{{ t('Avg/Night') }}</th>
+              <th class="text-right">{{ t('Expected') }}</th>
+              <th class="text-right">{{ t('Collected') }}</th>
+              <th class="text-right">{{ t('Outstanding') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(m, i) in monthlyData" :key="i" :class="{ 'row-current': i === currentMonth }">
-              <td><span :class="{ 'text-accent font-medium': i === currentMonth }">{{ m.label }}</span></td>
+              <td><span :class="{ 'text-accent font-medium': i === currentMonth }">{{ t(m.label) }}</span></td>
               <td>{{ m.count }}</td>
               <td>{{ m.nights }}</td>
               <td>{{ m.nights > 0 ? '€' + Math.round(m.revenue / m.nights) : '—' }}</td>
@@ -148,7 +148,7 @@
           </tbody>
           <tfoot>
             <tr class="total-row">
-              <td class="font-medium">Total {{ year }}</td>
+              <td class="font-medium">{{ t('Total {year}', { year }) }}</td>
               <td>{{ yearBookingCount }}</td>
               <td>{{ yearNights }}</td>
               <td>{{ yearNights > 0 ? '€' + avgPerNight : '—' }}</td>
@@ -168,6 +168,7 @@ import { ref, computed } from 'vue'
 import { getMonth, getYear, getDaysInYear, parseISO } from 'date-fns'
 import { useBookingsStore } from '@/stores/bookings'
 import { useApartmentsStore } from '@/stores/apartments'
+import { t } from '@/i18n'
 
 const bookingsStore = useBookingsStore()
 const apartmentsStore = useApartmentsStore()

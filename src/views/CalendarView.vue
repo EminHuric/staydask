@@ -5,26 +5,26 @@
     <!-- Nav bar -->
     <div class="cal-nav">
       <div class="cal-nav-left">
-        <button class="btn btn-ghost btn-sm" @click="prevMonth">← Prev</button>
+        <button class="btn btn-ghost btn-sm" @click="prevMonth">{{ t('← Prev') }}</button>
         <h2 class="cal-title">{{ monthLabel }}</h2>
-        <button class="btn btn-ghost btn-sm" @click="nextMonth">Next →</button>
-        <button class="btn btn-ghost btn-sm today-btn" @click="goToday">Today</button>
+        <button class="btn btn-ghost btn-sm" @click="nextMonth">{{ t('Next →') }}</button>
+        <button class="btn btn-ghost btn-sm today-btn" @click="goToday">{{ t('Today (button)') }}</button>
       </div>
       <div class="cal-nav-right">
         <select v-model="currentYear" class="form-input year-select" @change="applyYear">
           <option v-for="y in yearRange" :key="y" :value="y">{{ y }}</option>
         </select>
-        <button class="btn btn-primary" @click="openAdd(null, null)">+ New Booking</button>
+        <button class="btn btn-primary" @click="openAdd(null, null)">{{ t('+ New Booking') }}</button>
       </div>
     </div>
 
     <!-- Empty state -->
     <div v-if="apartments.length === 0" class="cal-empty">
       <div style="font-size: 3rem; margin-bottom: 1rem">🏠</div>
-      <h3>No apartments yet</h3>
+      <h3>{{ t('No apartments yet') }}</h3>
       <p class="text-muted text-sm">
-        <router-link to="/apartments" style="color: var(--accent)">Add your apartments</router-link>
-        to start managing bookings on the calendar.
+        <router-link to="/apartments" style="color: var(--accent)">{{ t('Add your apartments') }}</router-link>
+        {{ t('to start managing bookings on the calendar.') }}
       </p>
     </div>
 
@@ -36,7 +36,7 @@
       </div>
       <div class="legend-item">
         <span class="legend-dot" style="background: var(--bg-3); border: 1px solid var(--border)"></span>
-        <span style="color: var(--text-3)">Available</span>
+        <span style="color: var(--text-3)">{{ t('Available') }}</span>
       </div>
     </div>
 
@@ -46,7 +46,7 @@
         <!-- Header: day numbers -->
         <div class="cal-grid" :style="gridStyle">
           <!-- Corner cell -->
-          <div class="cal-corner">Apartment</div>
+          <div class="cal-corner">{{ t('Apartment') }}</div>
 
           <!-- Day header cells -->
           <div
@@ -126,6 +126,7 @@ import { useApartmentsStore } from '@/stores/apartments'
 import { useBookingsStore } from '@/stores/bookings'
 import BookingModal from '@/components/BookingModal.vue'
 import PaymentPanel from '@/components/PaymentPanel.vue'
+import { t, monthYear, dayShort } from '@/i18n'
 
 const CELL_W = 38  // px — width of each day column, must match CSS
 
@@ -143,7 +144,7 @@ const yearRange = computed(() => {
   return Array.from({ length: 8 }, (_, i) => base - 2 + i)
 })
 
-const monthLabel = computed(() => format(currentDate.value, 'MMMM yyyy'))
+const monthLabel = computed(() => monthYear(currentDate.value))
 
 const daysInMonth = computed(() => {
   const n = getDaysInMonth(currentDate.value)
@@ -191,7 +192,8 @@ function isWeekend(day) {
 
 function getDayName(day) {
   const d = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth(), day)
-  return ['Su','Mo','Tu','We','Th','Fr','Sa'][getDay(d)]
+  const idx = getDay(d)
+  return dayShort(idx, ['Su','Mo','Tu','We','Th','Fr','Sa'][idx])
 }
 
 // Get bookings for apartment that overlap with the current month
