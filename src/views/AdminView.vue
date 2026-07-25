@@ -15,7 +15,7 @@
       </div>
     </div>
 
-    <div v-if="actionMsg" class="action-msg">{{ actionMsg }}</div>
+    <div v-if="actionMsg" class="action-msg" :class="{ 'is-error': actionIsError }">{{ actionMsg }}</div>
 
     <!-- Platform overview -->
     <div class="card mb-4">
@@ -315,6 +315,7 @@ const copied = ref(false)
 const newCodeIsAdmin = ref(false)
 const search = ref('')
 const actionMsg = ref('')
+const actionIsError = ref(false)
 
 const notesUser = ref(null)
 const noteText = ref('')
@@ -375,44 +376,74 @@ const filteredUsers = computed(() => {
   )
 })
 
-function flash(msg) {
+function flash(msg, isError = false) {
   actionMsg.value = msg
-  setTimeout(() => { if (actionMsg.value === msg) actionMsg.value = '' }, 4000)
+  actionIsError.value = isError
+  setTimeout(() => {
+    if (actionMsg.value === msg) { actionMsg.value = ''; actionIsError.value = false }
+  }, 5000)
+}
+
+function errText(e) {
+  const m = e?.code || e?.message || String(e || 'unknown error')
+  return /permission|insufficient/i.test(m)
+    ? 'permission denied — re-deploy the Firestore rules (firebase deploy --only firestore:rules)'
+    : m
 }
 
 async function createCode() {
-  const code = await adminStore.createInviteCode('', newCodeIsAdmin.value ? 'admin' : 'user')
-  newCode.value = code
-  copied.value = false
-  newCodeIsAdmin.value = false
+  try {
+    const code = await adminStore.createInviteCode('', newCodeIsAdmin.value ? 'admin' : 'user')
+    newCode.value = code
+    copied.value = false
+    newCodeIsAdmin.value = false
+  } catch (e) {
+    flash(`Could not generate code: ${errText(e)}`, true)
+  }
 }
 
 async function removeCode(code) {
   if (!confirm(`Delete invite code ${code.code}? This can't be undone.`)) return
-  if (newCode.value === code.code) newCode.value = ''
-  await adminStore.deleteInviteCode(code.id)
-  flash(`Invite code ${code.code} deleted.`)
+  try {
+    if (newCode.value === code.code) newCode.value = ''
+    await adminStore.deleteInviteCode(code.id)
+    flash(`Invite code ${code.code} deleted.`)
+  } catch (e) {
+    flash(`Could not delete code: ${errText(e)}`, true)
+  }
 }
 
 async function toggleRole(u) {
   const nextRole = u.role === 'admin' ? 'user' : 'admin'
   if (u.role === 'admin' && !confirm(`Remove admin access from ${u.username || u.email}?`)) return
-  await adminStore.setUserRole(u.id, nextRole)
-  flash(`${u.username || u.email} is now ${nextRole === 'admin' ? 'an admin' : 'a regular user'}.`)
+  try {
+    await adminStore.setUserRole(u.id, nextRole)
+    flash(`${u.username || u.email} is now ${nextRole === 'admin' ? 'an admin' : 'a regular user'}.`)
+  } catch (e) {
+    flash(`Could not change role: ${errText(e)}`, true)
+  }
 }
 
 async function toggleDisabled(u) {
   const next = !u.disabled
   if (next && !confirm(`Disable ${u.username || u.email}? They won't be able to sign in until you enable them again. Their data is kept.`)) return
-  await adminStore.setUserDisabled(u.id, next)
-  flash(next ? `${u.username || u.email} has been disabled.` : `${u.username || u.email} has been enabled.`)
+  try {
+    await adminStore.setUserDisabled(u.id, next)
+    flash(next ? `${u.username || u.email} has been disabled.` : `${u.username || u.email} has been enabled.`)
+  } catch (e) {
+    flash(`Could not ${next ? 'disable' : 'enable'} ${u.username || u.email}: ${errText(e)}`, true)
+  }
 }
 
 async function removeUser(u) {
   const name = u.username || u.email
   if (!confirm(`Delete ${name}?\n\nThis removes their account — they can no longer sign in. This cannot be undone.`)) return
-  await adminStore.deleteUser(u.id)
-  flash(`${name} has been deleted.`)
+  try {
+    await adminStore.deleteUser(u.id)
+    flash(`${name} has been deleted.`)
+  } catch (e) {
+    flash(`Could not delete ${name}: ${errText(e)}`, true)
+  }
 }
 
 async function resetUserPassword(u) {
@@ -490,6 +521,11 @@ function formatDateTime(ts) {
   padding: 0.7rem 1rem;
   font-size: 0.85rem;
   margin-bottom: 1rem;
+}
+.action-msg.is-error {
+  background: var(--red-dim);
+  border-color: rgba(239,68,68,0.3);
+  color: var(--red);
 }
 
 .card-header-row {

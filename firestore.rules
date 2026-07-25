@@ -23,10 +23,12 @@ service cloud.firestore {
       return isSignedIn() && myProfile().role == 'admin';
     }
 
-    // The platform's root account — the first admin, created at /setup. Other
-    // admins can never disable, demote or delete this account.
-    function superAdminUid() {
-      return get(/databases/$(database)/documents/meta/setup).data.completedBy;
+    // Is `uid` the platform's root account (the first admin, from /setup)?
+    // Other admins can never disable, demote or delete it. The exists() guard
+    // keeps all user-management working even if the /setup marker is absent.
+    function isSuperAdmin(uid) {
+      return exists(/databases/$(database)/documents/meta/setup) &&
+        get(/databases/$(database)/documents/meta/setup).data.completedBy == uid;
     }
 
     // Every collection of business data is scoped to its owner's own uid.
@@ -81,11 +83,11 @@ service cloud.firestore {
       allow update: if isSignedIn() && unchanged('workspaceId') && (
         (request.auth.uid == userId && unchanged('role') &&
           request.resource.data.get('disabled', false) == resource.data.get('disabled', false)) ||
-        (isAdmin() && (userId != superAdminUid() || request.auth.uid == superAdminUid()))
+        (isAdmin() && !isSuperAdmin(userId))
       );
 
       // Only admins may remove an account, and the super admin can never be removed.
-      allow delete: if isAdmin() && userId != superAdminUid();
+      allow delete: if isAdmin() && !isSuperAdmin(userId);
     }
 
     // ── inviteCodes ── (doc ID == the code itself; admin-managed platform-wide)
