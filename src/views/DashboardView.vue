@@ -182,7 +182,10 @@
     <!-- Booking modal (opened from notifications/rows) -->
     <BookingModal v-if="showModal && selectedBooking"
       :booking="selectedBooking"
-      @close="showModal = false" @saved="showModal = false" />
+      @close="showModal = false" @saved="showModal = false" @payments="fromModalPayments" />
+
+    <!-- Payment panel -->
+    <PaymentPanel v-if="showPayments && paymentBooking" :booking="paymentBooking" @close="showPayments = false" />
   </div>
 </template>
 
@@ -193,6 +196,7 @@ import { useAuthStore } from '../stores/auth'
 import { useApartmentsStore } from '../stores/apartments'
 import { useBookingsStore } from '../stores/bookings'
 import BookingModal from '@/components/BookingModal.vue'
+import PaymentPanel from '@/components/PaymentPanel.vue'
 
 const authStore = useAuthStore()
 const apartmentsStore = useApartmentsStore()
@@ -258,6 +262,14 @@ function notifText(n) {
 const showModal = ref(false)
 const selectedBooking = ref(null)
 function openBooking(b) { selectedBooking.value = b; showModal.value = true }
+
+const showPayments = ref(false)
+const paymentBooking = ref(null)
+function fromModalPayments() {
+  const b = selectedBooking.value
+  showModal.value = false
+  if (b) { paymentBooking.value = b; showPayments.value = true }
+}
 </script>
 
 <style scoped>

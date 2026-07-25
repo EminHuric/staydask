@@ -119,7 +119,7 @@
 
     <!-- Booking modal -->
     <BookingModal v-if="showModal" :booking="selectedBooking"
-      @close="showModal = false" @saved="showModal = false" />
+      @close="showModal = false" @saved="showModal = false" @payments="fromModalPayments" />
 
     <!-- Payment panel -->
     <PaymentPanel v-if="showPayments && paymentBooking"
@@ -227,6 +227,11 @@ function clearFilters() { search.value = ''; filterApt.value = ''; filterPayment
 function openAdd() { selectedBooking.value = null; showModal.value = true }
 function openEdit(b) { selectedBooking.value = b; showModal.value = true }
 function openPayments(b) { paymentBooking.value = b; showPayments.value = true }
+function fromModalPayments() {
+  const b = selectedBooking.value
+  showModal.value = false
+  if (b) openPayments(b)
+}
 </script>
 
 <style scoped>

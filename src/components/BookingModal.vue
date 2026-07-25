@@ -65,6 +65,11 @@
           <div v-if="nights > 0" class="nights-chip">
             {{ nights }} night{{ nights !== 1 ? 's' : '' }}
           </div>
+          <!-- Live availability for the chosen apartment + dates -->
+          <div v-if="form.apartmentId && nights > 0" class="avail" :class="availability ? 'avail-busy' : 'avail-free'">
+            <span v-if="availability">✗ Taken — {{ availability.guestName }} is booked {{ fmt(availability.checkIn) }} → {{ fmt(availability.checkOut) }}</span>
+            <span v-else>✓ Available for these dates</span>
+          </div>
         </div>
 
         <!-- ── Pricing ────────────────────────────────────────────── -->
@@ -134,8 +139,12 @@
         <div class="modal-footer-row">
           <div class="footer-left">
             <button v-if="booking && booking.status !== 'cancelled'"
+              type="button" class="btn btn-ghost btn-sm" @click="$emit('payments')">
+              💰 Payments
+            </button>
+            <button v-if="booking && booking.status !== 'cancelled'"
               type="button" class="btn btn-danger btn-sm" @click="showCancelConfirm = true">
-              Cancel Reservation
+              Cancel
             </button>
             <span v-if="booking?.status === 'cancelled'" class="badge badge-red">Cancelled</span>
           </div>
@@ -170,7 +179,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { differenceInDays, parseISO } from 'date-fns'
+import { differenceInDays, parseISO, format } from 'date-fns'
 import { useBookingsStore } from '@/stores/bookings'
 import { useApartmentsStore } from '@/stores/apartments'
 import { useGuestsStore } from '@/stores/guests'
@@ -180,7 +189,7 @@ const props = defineProps({
   presetAptId: { type: String, default: null },
   presetDate: { type: String, default: null }
 })
-const emit = defineEmits(['close', 'saved'])
+const emit = defineEmits(['close', 'saved', 'payments'])
 
 const bookingsStore = useBookingsStore()
 const apartmentsStore = useApartmentsStore()
@@ -279,6 +288,16 @@ const nights = computed(() => {
   return n > 0 ? n : 0
 })
 const totalPrice = computed(() => nights.value * (form.value.pricePerNight || 0))
+
+// Live conflict check for the selected apartment + dates (excludes this booking
+// when editing). Null = the dates are free.
+const availability = computed(() => {
+  if (!form.value.apartmentId || nights.value <= 0) return null
+  return bookingsStore.checkConflict(
+    form.value.apartmentId, form.value.checkIn, form.value.checkOut, props.booking?.id || null
+  )
+})
+function fmt(d) { return d ? format(parseISO(d), 'dd MMM') : '' }
 
 async function save() {
   errorMsg.value = ''
@@ -385,6 +404,16 @@ form { display: flex; flex-direction: column; gap: 0; overflow-y: auto; }
   border-radius: 99px;
   width: fit-content;
 }
+
+.avail {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+}
+.avail-free { background: var(--green-dim); color: var(--green); border-color: rgba(34,197,94,0.25); }
+.avail-busy { background: var(--red-dim); color: var(--red); border-color: rgba(239,68,68,0.25); }
 
 .price-summary {
   background: var(--bg-3);

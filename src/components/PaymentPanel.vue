@@ -1,13 +1,15 @@
 <!-- src/components/PaymentPanel.vue -->
-<!-- Slide-in panel for managing payments on an existing booking -->
+<!-- Slide-in panel for managing payments on an existing booking. Reads the LIVE
+     booking from the store so recorded payments show up (and count into revenue)
+     instantly. -->
 <template>
   <div class="panel-overlay" @click.self="$emit('close')">
     <div class="panel">
       <!-- Header -->
       <div class="panel-header">
         <div>
-          <div class="panel-title">Payment Management</div>
-          <div class="panel-sub">{{ booking.reservationId }}</div>
+          <div class="panel-title">Payments</div>
+          <div class="panel-sub">{{ b.reservationId }}</div>
         </div>
         <button class="icon-btn" @click="$emit('close')">✕</button>
       </div>
@@ -15,23 +17,23 @@
       <!-- Booking summary -->
       <div class="booking-summary">
         <div class="summary-guest">
-          <div class="guest-avatar-sm">{{ initials(booking.guestName) }}</div>
+          <div class="guest-avatar-sm">{{ initials(b.guestName) }}</div>
           <div>
-            <div class="font-medium" style="color:var(--text)">{{ booking.guestName }}</div>
-            <div class="text-xs text-muted">{{ aptName }} · {{ formatDate(booking.checkIn) }} → {{ formatDate(booking.checkOut) }} · {{ booking.days }}n</div>
+            <div class="font-medium" style="color:var(--text)">{{ b.guestName }}</div>
+            <div class="text-xs text-muted">{{ aptName }} · {{ formatDate(b.checkIn) }} → {{ formatDate(b.checkOut) }} · {{ b.days }}n</div>
           </div>
         </div>
-        <span :class="['badge', statusBadge(booking.paymentStatus)]">{{ statusLabel(booking.paymentStatus) }}</span>
+        <span :class="['badge', statusBadge(b.paymentStatus)]">{{ statusLabel(b.paymentStatus) }}</span>
       </div>
 
       <!-- Financial summary cards -->
       <div class="fin-grid">
         <div class="fin-card">
-          <div class="fin-value">€{{ (booking.totalPrice || 0).toLocaleString() }}</div>
+          <div class="fin-value">€{{ (b.totalPrice || 0).toLocaleString() }}</div>
           <div class="fin-label">Total</div>
         </div>
         <div class="fin-card">
-          <div class="fin-value text-green">€{{ (booking.totalPaid || 0).toLocaleString() }}</div>
+          <div class="fin-value text-green">€{{ (b.totalPaid || 0).toLocaleString() }}</div>
           <div class="fin-label">Collected</div>
         </div>
         <div class="fin-card" :class="{ accent: remaining > 0 }">
@@ -42,13 +44,21 @@
         </div>
       </div>
 
-      <!-- Deposit line -->
-      <div class="deposit-line">
-        <span class="text-sm text-muted">Deposit: €{{ (booking.depositAmount || 0).toLocaleString() }}</span>
-        <span :class="['badge', booking.depositPaid ? 'badge-green' : 'badge-red']" style="font-size:.7rem">
-          {{ booking.depositPaid ? 'Deposit Paid' : 'Deposit Pending' }}
-        </span>
+      <!-- One-tap quick actions -->
+      <div v-if="b.status === 'cancelled'" class="cancelled-note">
+        Cannot add payments to a cancelled reservation.
       </div>
+      <template v-else>
+        <div v-if="remaining > 0 || depositDue > 0" class="quick-pay">
+          <button v-if="depositDue > 0" class="btn btn-ghost quick-btn" :disabled="busy" @click="quickDeposit">
+            <span>Deposit paid</span><strong>€{{ depositDue.toLocaleString() }}</strong>
+          </button>
+          <button v-if="remaining > 0" class="btn btn-primary quick-btn" :disabled="busy" @click="quickPayFull">
+            <span>Mark fully paid</span><strong>€{{ remaining.toLocaleString() }}</strong>
+          </button>
+        </div>
+        <div v-else class="all-paid">✓ Fully paid</div>
+      </template>
 
       <!-- Progress bar -->
       <div class="progress-wrap">
@@ -58,6 +68,52 @@
         <span class="progress-label">{{ progressPct }}% paid</span>
       </div>
 
+      <!-- Custom amount (tucked away — quick actions cover most cases) -->
+      <details v-if="b.status !== 'cancelled'" class="custom-pay">
+        <summary>Enter a custom amount</summary>
+        <form @submit.prevent="submitPayment" class="add-payment-form">
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label class="form-label">Amount (€) *</label>
+              <input v-model.number="pForm.amount" class="form-input" type="number"
+                min="0.01" step="0.01" placeholder="0.00" required />
+            </div>
+            <div class="form-group flex-1">
+              <label class="form-label">Date *</label>
+              <input v-model="pForm.date" class="form-input" type="date" required />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label class="form-label">Type</label>
+              <select v-model="pForm.type" class="form-input">
+                <option value="payment">Payment</option>
+                <option value="deposit">Deposit</option>
+                <option value="refund">Refund</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label class="form-label">Note</label>
+              <input v-model="pForm.note" class="form-input" placeholder="e.g. Cash, Transfer…" />
+            </div>
+          </div>
+          <div v-if="payErr" class="error-banner">{{ payErr }}</div>
+          <button type="submit" class="btn btn-primary w-full" :disabled="busy">
+            {{ busy ? 'Adding…' : '+ Add Payment' }}
+          </button>
+        </form>
+      </details>
+
+      <div v-if="payErr && b.status === 'cancelled'" class="error-banner" style="margin:.75rem 1.5rem">{{ payErr }}</div>
+
+      <!-- Deposit line -->
+      <div class="deposit-line">
+        <span class="text-sm text-muted">Deposit: €{{ (b.depositAmount || 0).toLocaleString() }}</span>
+        <span :class="['badge', b.depositPaid ? 'badge-green' : 'badge-red']" style="font-size:.7rem">
+          {{ b.depositPaid ? 'Deposit Paid' : 'Deposit Pending' }}
+        </span>
+      </div>
+
       <!-- Payment history -->
       <div class="section-title">Payment History</div>
       <div v-if="!payments.length" class="empty-payments">
@@ -65,8 +121,8 @@
       </div>
       <div v-else class="payments-list">
         <div v-for="p in payments" :key="p.id" class="payment-row">
-          <div class="payment-type-badge" :class="p.type === 'deposit' ? 'deposit' : 'payment'">
-            {{ p.type === 'deposit' ? 'DEP' : 'PMT' }}
+          <div class="payment-type-badge" :class="p.type === 'deposit' ? 'deposit' : (p.type === 'refund' ? 'refund' : 'payment')">
+            {{ p.type === 'deposit' ? 'DEP' : (p.type === 'refund' ? 'REF' : 'PMT') }}
           </div>
           <div class="payment-info">
             <div class="payment-date">{{ formatDate(p.date) }}</div>
@@ -76,43 +132,6 @@
           <button class="remove-btn" @click="removePayment(p.id)" title="Remove payment">×</button>
         </div>
       </div>
-
-      <!-- Add payment form -->
-      <div class="section-title" style="margin-top:1rem">Add Payment</div>
-      <div v-if="booking.status === 'cancelled'" class="text-sm text-muted" style="padding:.5rem 0">
-        Cannot add payments to a cancelled reservation.
-      </div>
-      <form v-else @submit.prevent="submitPayment" class="add-payment-form">
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label class="form-label">Amount (€) *</label>
-            <input v-model.number="pForm.amount" class="form-input" type="number"
-              min="0.01" step="0.01" placeholder="0.00" required />
-          </div>
-          <div class="form-group flex-1">
-            <label class="form-label">Date *</label>
-            <input v-model="pForm.date" class="form-input" type="date" required />
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label class="form-label">Type</label>
-            <select v-model="pForm.type" class="form-input">
-              <option value="payment">Payment</option>
-              <option value="deposit">Deposit</option>
-              <option value="refund">Refund</option>
-            </select>
-          </div>
-          <div class="form-group flex-1">
-            <label class="form-label">Note</label>
-            <input v-model="pForm.note" class="form-input" placeholder="e.g. Cash, Transfer…" />
-          </div>
-        </div>
-        <div v-if="payErr" class="error-banner">{{ payErr }}</div>
-        <button type="submit" class="btn btn-primary w-full" :disabled="addingPayment">
-          {{ addingPayment ? 'Adding…' : '+ Add Payment' }}
-        </button>
-      </form>
     </div>
   </div>
 </template>
@@ -124,27 +143,41 @@ import { useBookingsStore } from '@/stores/bookings'
 import { useApartmentsStore } from '@/stores/apartments'
 
 const props = defineProps({ booking: { type: Object, required: true } })
-const emit = defineEmits(['close'])
+defineEmits(['close'])
 
 const bookingsStore = useBookingsStore()
 const apartmentsStore = useApartmentsStore()
 
-const aptName = computed(() =>
-  apartmentsStore.apartments.find(a => a.id === props.booking.apartmentId)?.name || '—'
+// Live booking from the store, so payments reflect instantly after recording.
+const b = computed(() =>
+  bookingsStore.bookings.find(x => x.id === props.booking.id) || props.booking
 )
 
-const payments = computed(() => (props.booking.payments || [])
-  .slice().sort((a, b) => a.date > b.date ? 1 : -1)
+const today = new Date().toISOString().slice(0, 10)
+
+const aptName = computed(() =>
+  apartmentsStore.apartments.find(a => a.id === b.value.apartmentId)?.name || '—'
+)
+
+const payments = computed(() => (b.value.payments || [])
+  .slice().sort((a, x) => a.date > x.date ? 1 : -1)
 )
 
 const remaining = computed(() =>
-  Math.max(0, (props.booking.totalPrice || 0) - (props.booking.totalPaid || 0))
+  Math.max(0, (b.value.totalPrice || 0) - (b.value.totalPaid || 0))
 )
 
+// How much deposit is still owed (0 once marked paid or fully covered).
+const depositDue = computed(() => {
+  if (b.value.depositPaid) return 0
+  const dep = b.value.depositAmount || 0
+  return Math.min(dep, remaining.value)
+})
+
 const progressPct = computed(() => {
-  const total = props.booking.totalPrice || 0
+  const total = b.value.totalPrice || 0
   if (total === 0) return 0
-  return Math.min(100, Math.round(((props.booking.totalPaid || 0) / total) * 100))
+  return Math.min(100, Math.round(((b.value.totalPaid || 0) / total) * 100))
 })
 
 function initials(name) {
@@ -166,36 +199,39 @@ function statusBadge(s) {
   return { unpaid: 'badge-red', deposit_paid: 'badge-amber', partial: 'badge-blue', paid: 'badge-green', cancelled: 'badge-red' }[s] || 'badge-amber'
 }
 
-// Add payment form
-const addingPayment = ref(false)
+const busy = ref(false)
 const payErr = ref('')
-const pForm = ref({
-  amount: '',
-  date: new Date().toISOString().slice(0, 10),
-  type: 'payment',
-  note: ''
-})
+const pForm = ref({ amount: remaining.value || '', date: today, type: 'payment', note: '' })
 
-async function submitPayment() {
+async function record({ amount, type, note }) {
   payErr.value = ''
-  if (!pForm.value.amount || pForm.value.amount <= 0) {
-    payErr.value = 'Amount must be greater than 0.'
-    return
-  }
-  addingPayment.value = true
+  if (!amount || amount <= 0) { payErr.value = 'Amount must be greater than 0.'; return false }
+  busy.value = true
   try {
-    await bookingsStore.addPayment(props.booking.id, {
-      amount: pForm.value.amount,
-      date: pForm.value.date,
-      type: pForm.value.type,
-      note: pForm.value.note
-    })
-    pForm.value.amount = ''
-    pForm.value.note = ''
+    await bookingsStore.addPayment(props.booking.id, { amount: Number(amount), date: today, type, note })
+    return true
   } catch (e) {
     payErr.value = e.message
+    return false
+  } finally {
+    busy.value = false
   }
-  addingPayment.value = false
+}
+
+async function quickPayFull() {
+  await record({ amount: remaining.value, type: 'payment', note: 'Paid in full' })
+}
+
+async function quickDeposit() {
+  const ok = await record({ amount: depositDue.value, type: 'deposit', note: 'Deposit' })
+  if (ok) {
+    try { await bookingsStore.updateBooking(props.booking.id, { depositPaid: true }) } catch { /* non-fatal */ }
+  }
+}
+
+async function submitPayment() {
+  const ok = await record({ amount: pForm.value.amount, type: pForm.value.type, note: pForm.value.note })
+  if (ok) { pForm.value.amount = ''; pForm.value.note = '' }
 }
 
 async function removePayment(paymentId) {
@@ -275,19 +311,36 @@ async function removePayment(paymentId) {
 .fin-value { font-size: 1.1rem; font-weight: 700; color: var(--text); }
 .fin-label { font-size: .65rem; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin-top: .2rem; }
 
-.deposit-line {
+/* Quick actions */
+.quick-pay {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: .75rem 1.5rem;
-  border-bottom: 1px solid var(--border-subtle);
+  gap: .6rem;
+  padding: 1rem 1.5rem;
 }
+.quick-btn {
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: .1rem;
+  padding: .7rem .5rem;
+  line-height: 1.2;
+}
+.quick-btn span { font-size: .72rem; font-weight: 600; opacity: .85; }
+.quick-btn strong { font-size: 1rem; }
+.all-paid {
+  padding: 1rem 1.5rem;
+  color: var(--green);
+  font-weight: 600;
+  font-size: .9rem;
+}
+.cancelled-note { padding: 1rem 1.5rem; font-size: .85rem; color: var(--text-3); }
 
 .progress-wrap {
   padding: .75rem 1.5rem;
   display: flex;
   align-items: center;
   gap: .75rem;
+  border-top: 1px solid var(--border-subtle);
   border-bottom: 1px solid var(--border);
 }
 .progress-bg {
@@ -305,6 +358,21 @@ async function removePayment(paymentId) {
 }
 .progress-label { font-size: .75rem; color: var(--text-2); white-space: nowrap; }
 
+/* Custom amount */
+.custom-pay { border-bottom: 1px solid var(--border); }
+.custom-pay summary {
+  padding: .8rem 1.5rem;
+  font-size: .8rem;
+  color: var(--text-2);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+.custom-pay summary::-webkit-details-marker { display: none; }
+.custom-pay summary::before { content: '＋ '; color: var(--accent); font-weight: 700; }
+.custom-pay[open] summary::before { content: '－ '; }
+.custom-pay summary:hover { color: var(--text); }
+
 .section-title {
   padding: .875rem 1.5rem .4rem;
   font-size: .68rem;
@@ -314,17 +382,22 @@ async function removePayment(paymentId) {
   color: var(--text-3);
 }
 
+.deposit-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .75rem 1.5rem;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
 .empty-payments {
   padding: 1rem 1.5rem;
   font-size: .82rem;
   color: var(--text-3);
 }
 
-.payments-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
+.payments-list { display: flex; flex-direction: column; gap: 0; }
 
 .payment-row {
   display: flex;
@@ -344,6 +417,7 @@ async function removePayment(paymentId) {
 }
 .payment-type-badge.deposit { background: var(--accent-dim); color: var(--accent); }
 .payment-type-badge.payment { background: var(--green-dim); color: var(--green); }
+.payment-type-badge.refund { background: var(--red-dim); color: var(--red); }
 
 .payment-info { flex: 1; min-width: 0; }
 .payment-date { font-size: .78rem; color: var(--text-2); }
@@ -358,7 +432,7 @@ async function removePayment(paymentId) {
 .remove-btn:hover { background: var(--red-dim); color: var(--red); }
 
 .add-payment-form {
-  padding: .5rem 1.5rem 1.5rem;
+  padding: .5rem 1.5rem 1.25rem;
   display: flex;
   flex-direction: column;
   gap: .75rem;
