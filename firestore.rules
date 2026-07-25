@@ -4,8 +4,8 @@ rules_version = '2';
 // apartments/bookings/guests); regular users can never see each other's data.
 // "Admin" is a platform-wide role: admins manage accounts (invite codes, roles,
 // enabling/disabling and deleting users) and may READ any account's data for
-// support, but can never WRITE another account's data. The super admin (first
-// admin, from /setup) is protected: other admins can't disable/demote/delete it.
+// support, but can never WRITE another account's data. The owner account
+// (isProtectedAdmin, by email) can't be disabled/demoted/deleted by other admins.
 // Deploy with: firebase deploy --only firestore:rules
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -23,12 +23,12 @@ service cloud.firestore {
       return isSignedIn() && myProfile().role == 'admin';
     }
 
-    // Is `uid` the platform's root account (the first admin, from /setup)?
-    // Other admins can never disable, demote or delete it. The exists() guard
-    // keeps all user-management working even if the /setup marker is absent.
-    function isSuperAdmin(uid) {
-      return exists(/databases/$(database)/documents/meta/setup) &&
-        get(/databases/$(database)/documents/meta/setup).data.completedBy == uid;
+    // The protected root account, identified by email so it always matches the
+    // real owner regardless of the /setup marker. Other admins can never
+    // disable, demote or delete this account. To change the owner, edit the
+    // email here (and in AdminView's SUPER_ADMIN_EMAIL).
+    function isProtectedAdmin(userData) {
+      return userData.get('email', '').lower() == 'emynbusiness@gmail.com';
     }
 
     // Every collection of business data is scoped to its owner's own uid.
@@ -83,11 +83,11 @@ service cloud.firestore {
       allow update: if isSignedIn() && unchanged('workspaceId') && (
         (request.auth.uid == userId && unchanged('role') &&
           request.resource.data.get('disabled', false) == resource.data.get('disabled', false)) ||
-        (isAdmin() && !isSuperAdmin(userId))
+        (isAdmin() && !isProtectedAdmin(resource.data))
       );
 
-      // Only admins may remove an account, and the super admin can never be removed.
-      allow delete: if isAdmin() && !isSuperAdmin(userId);
+      // Only admins may remove an account, and the protected owner can never be removed.
+      allow delete: if isAdmin() && !isProtectedAdmin(resource.data);
     }
 
     // ── inviteCodes ── (doc ID == the code itself; admin-managed platform-wide)

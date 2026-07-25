@@ -327,8 +327,10 @@ onMounted(() => {
   adminStore.loadSuperAdmin()
 })
 
+// The protected owner account — must match isProtectedAdmin() in firestore.rules.
+const SUPER_ADMIN_EMAIL = 'emynbusiness@gmail.com'
 function isSuper(u) {
-  return !!adminStore.superAdminId && u.id === adminStore.superAdminId
+  return (u.email || '').toLowerCase() === SUPER_ADMIN_EMAIL
 }
 
 function openInspect(u) {
