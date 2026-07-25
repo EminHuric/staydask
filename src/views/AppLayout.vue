@@ -116,6 +116,11 @@ async function handleLogout() {
   display: flex;
   min-height: 100vh;
   background: var(--bg);
+  /* Ambient depth so the interior isn't flat black */
+  background-image:
+    radial-gradient(55rem 40rem at 100% -6%, rgba(245,166,35,0.05), transparent 60%),
+    radial-gradient(50rem 42rem at -8% 108%, rgba(59,130,246,0.042), transparent 62%);
+  background-attachment: fixed;
 }
 
 /* ─────────────────────── Sidebar ─────────────────────────── */
