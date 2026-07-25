@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import {
   collection, addDoc, updateDoc, deleteDoc,
-  doc, onSnapshot, query, where, serverTimestamp
+  doc, onSnapshot, query, where, serverTimestamp, increment
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuthStore } from './auth'
@@ -38,6 +38,7 @@ export const useGuestsStore = defineStore('guests', () => {
       workspaceId: authStore.workspaceId,
       createdAt: serverTimestamp()
     })
+    await updateDoc(doc(db, 'users', authStore.workspaceId), { guestCount: increment(1) })
     return ref.id
   }
 
@@ -46,7 +47,9 @@ export const useGuestsStore = defineStore('guests', () => {
   }
 
   async function deleteGuest(id) {
+    const authStore = useAuthStore()
     await deleteDoc(doc(db, 'guests', id))
+    await updateDoc(doc(db, 'users', authStore.workspaceId), { guestCount: increment(-1) })
   }
 
   // Find existing guest by phone or name, or create new one

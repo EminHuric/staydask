@@ -15,43 +15,34 @@
       </div>
     </div>
 
-    <!-- Workspace overview -->
+    <!-- Platform overview -->
     <div class="card mb-4">
-      <h2 class="mb-4">Workspace Overview</h2>
+      <h2 class="mb-4">Platform Overview</h2>
       <div class="grid-4">
         <div class="stat-card">
+          <div class="stat-icon">👤</div>
+          <div class="stat-value">{{ adminStore.users.length }}</div>
+          <div class="stat-label">Accounts</div>
+        </div>
+        <div class="stat-card">
           <div class="stat-icon">🏠</div>
-          <div class="stat-value">{{ apartmentsStore.apartments.length }}</div>
+          <div class="stat-value">{{ platformTotals.apartments }}</div>
           <div class="stat-label">Apartments</div>
         </div>
         <div class="stat-card">
           <div class="stat-icon">📅</div>
-          <div class="stat-value">{{ bookingsStore.bookings.length }}</div>
+          <div class="stat-value">{{ platformTotals.bookings }}</div>
           <div class="stat-label">Bookings</div>
         </div>
         <div class="stat-card">
           <div class="stat-icon">👥</div>
-          <div class="stat-value">{{ guestsStore.guests.length }}</div>
+          <div class="stat-value">{{ platformTotals.guests }}</div>
           <div class="stat-label">Guests</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon">💰</div>
-          <div class="stat-value">€{{ bookingsStore.totalRevenue.toLocaleString() }}</div>
-          <div class="stat-label">Total Revenue</div>
-        </div>
       </div>
-
-      <div class="limit-row">
-        <div>
-          <div class="text-sm font-medium">Apartment limit</div>
-          <div class="text-xs text-muted">Cap how many apartments users in this workspace can create. Leave empty for no limit.</div>
-        </div>
-        <div class="limit-controls">
-          <input v-model="limitInput" class="form-input limit-input" type="number" min="0" placeholder="No limit" />
-          <button class="btn btn-primary btn-sm" @click="saveLimit">Save</button>
-        </div>
-      </div>
-      <div v-if="limitSaved" class="text-xs" style="color: var(--green)">Saved.</div>
+      <p class="text-xs text-muted mt-2">
+        Each account's apartments, bookings and guests stay private — admins only see these totals and counts, never the actual data.
+      </p>
     </div>
 
     <!-- Two-column layout -->

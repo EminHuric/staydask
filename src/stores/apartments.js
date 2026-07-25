@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import {
   collection, addDoc, updateDoc, deleteDoc,
-  doc, onSnapshot, query, where, serverTimestamp
+  doc, onSnapshot, query, where, serverTimestamp, increment
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuthStore } from './auth'
@@ -11,7 +11,7 @@ import { useAuthStore } from './auth'
 export const useApartmentsStore = defineStore('apartments', () => {
   const apartments = ref([])
   const loading = ref(false)
-  const limit = ref(null) // null = unlimited; set by the workspace owner via Admin panel
+  const limit = ref(null) // null = unlimited; set by an admin via the Admin panel
   let unsubscribe = null
   let unsubLimit = null
 
@@ -30,7 +30,6 @@ export const useApartmentsStore = defineStore('apartments', () => {
       loading.value = false
     })
 
-    // The workspace's own record is the owner's user doc (workspaceId === owner's uid)
     unsubLimit = onSnapshot(doc(db, 'users', authStore.workspaceId), (snap) => {
       limit.value = snap.exists() ? (snap.data().apartmentLimit ?? null) : null
     })
@@ -53,6 +52,7 @@ export const useApartmentsStore = defineStore('apartments', () => {
       workspaceId: authStore.workspaceId,
       createdAt: serverTimestamp()
     })
+    await updateDoc(doc(db, 'users', authStore.workspaceId), { apartmentCount: increment(1) })
   }
 
   async function updateApartment(id, data) {
@@ -60,15 +60,10 @@ export const useApartmentsStore = defineStore('apartments', () => {
   }
 
   async function deleteApartment(id) {
-    await deleteDoc(doc(db, 'apartments', id))
-  }
-
-  async function setLimit(value) {
     const authStore = useAuthStore()
-    await updateDoc(doc(db, 'users', authStore.workspaceId), {
-      apartmentLimit: value == null || value === '' ? null : Number(value)
-    })
+    await deleteDoc(doc(db, 'apartments', id))
+    await updateDoc(doc(db, 'users', authStore.workspaceId), { apartmentCount: increment(-1) })
   }
 
-  return { apartments, loading, limit, subscribe, unsubscribeAll, addApartment, updateApartment, deleteApartment, setLimit }
+  return { apartments, loading, limit, subscribe, unsubscribeAll, addApartment, updateApartment, deleteApartment }
 })

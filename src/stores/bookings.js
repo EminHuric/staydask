@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import {
   collection, addDoc, updateDoc, deleteDoc,
-  doc, onSnapshot, query, where, serverTimestamp
+  doc, onSnapshot, query, where, serverTimestamp, increment
 } from 'firebase/firestore'
 import {
   differenceInDays, parseISO, isWithinInterval,
@@ -120,6 +120,7 @@ export const useBookingsStore = defineStore('bookings', () => {
       workspaceId: authStore.workspaceId,
       createdAt: serverTimestamp()
     })
+    await updateDoc(doc(db, 'users', authStore.workspaceId), { bookingCount: increment(1) })
   }
 
   async function updateBooking(id, data) {
@@ -159,7 +160,9 @@ export const useBookingsStore = defineStore('bookings', () => {
   }
 
   async function deleteBooking(id) {
+    const authStore = useAuthStore()
     await deleteDoc(doc(db, 'bookings', id))
+    await updateDoc(doc(db, 'users', authStore.workspaceId), { bookingCount: increment(-1) })
   }
 
   async function addPayment(bookingId, { amount, date, type = 'payment', note = '' }) {

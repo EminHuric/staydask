@@ -2,12 +2,11 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import {
   collection, setDoc, updateDoc,
-  doc, onSnapshot, query, where, serverTimestamp
+  doc, onSnapshot, serverTimestamp
 } from 'firebase/firestore'
 import { db } from '../firebase'
-import { useAuthStore } from './auth'
 
-// Sorts newest-first without requiring a composite (workspaceId + createdAt) index.
+// Sorts newest-first client-side (avoids needing a composite index).
 function byCreatedAtDesc(a, b) {
   return (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)
 }
@@ -17,6 +16,9 @@ function generateCode(length = 8) {
   return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
 }
 
+// Platform-wide account management. Admins can see every account (for invite
+// codes, roles, and per-account apartment limits) but never anyone's actual
+// apartments/bookings/guests — those stay isolated to each account.
 export const useAdminStore = defineStore('admin', () => {
   const inviteCodes = ref([])
   const users = ref([])
@@ -25,21 +27,15 @@ export const useAdminStore = defineStore('admin', () => {
   let unsubUsers = null
 
   function subscribeInviteCodes() {
-    const authStore = useAuthStore()
-    if (!authStore.workspaceId) return
     loading.value = true
-    const q = query(collection(db, 'inviteCodes'), where('workspaceId', '==', authStore.workspaceId))
-    unsubCodes = onSnapshot(q, snap => {
+    unsubCodes = onSnapshot(collection(db, 'inviteCodes'), snap => {
       inviteCodes.value = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort(byCreatedAtDesc)
       loading.value = false
     })
   }
 
   function subscribeUsers() {
-    const authStore = useAuthStore()
-    if (!authStore.workspaceId) return
-    const q = query(collection(db, 'users'), where('workspaceId', '==', authStore.workspaceId))
-    unsubUsers = onSnapshot(q, snap => {
+    unsubUsers = onSnapshot(collection(db, 'users'), snap => {
       users.value = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort(byCreatedAtDesc)
     })
   }
@@ -52,13 +48,11 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   async function createInviteCode(label = '', role = 'user') {
-    const authStore = useAuthStore()
     const code = generateCode()
     await setDoc(doc(db, 'inviteCodes', code), {
       code,
       label,
       role: role === 'admin' ? 'admin' : 'user',
-      workspaceId: authStore.workspaceId,
       active: true,
       usedBy: null,
       usedByUsername: null,
@@ -76,9 +70,15 @@ export const useAdminStore = defineStore('admin', () => {
     await updateDoc(doc(db, 'users', userId), { role: role === 'admin' ? 'admin' : 'user' })
   }
 
+  async function setUserLimit(userId, value) {
+    await updateDoc(doc(db, 'users', userId), {
+      apartmentLimit: value == null || value === '' ? null : Number(value)
+    })
+  }
+
   return {
     inviteCodes, users, loading,
     subscribeInviteCodes, subscribeUsers, unsubscribeAll,
-    createInviteCode, toggleCodeActive, setUserRole
+    createInviteCode, toggleCodeActive, setUserRole, setUserLimit
   }
 })

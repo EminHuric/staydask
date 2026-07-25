@@ -88,14 +88,18 @@ export const useAuthStore = defineStore('auth', () => {
       const cred = await createUserWithEmailAndPassword(auth, email, password)
       await updateProfile(cred.user, { displayName: username })
 
-      // Create user profile in Firestore — joins the inviting admin's workspace
+      // Create user profile in Firestore — every account is its own isolated workspace
       const userDocRef = doc(db, 'users', cred.user.uid)
       await setDoc(userDocRef, {
         uid: cred.user.uid,
         username,
         email,
         role: codeData.role === 'admin' ? 'admin' : 'user',
-        workspaceId: codeData.workspaceId || cred.user.uid,
+        workspaceId: cred.user.uid,
+        apartmentLimit: null,
+        apartmentCount: 0,
+        bookingCount: 0,
+        guestCount: 0,
         inviteCode: normalizedCode,
         createdAt: serverTimestamp()
       })

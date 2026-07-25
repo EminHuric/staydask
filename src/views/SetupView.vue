@@ -62,7 +62,7 @@ import {
   updateProfile
 } from 'firebase/auth'
 import {
-  doc, setDoc, serverTimestamp
+  doc, getDoc, setDoc, serverTimestamp
 } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 
@@ -77,6 +77,14 @@ async function handleSetup() {
   error.value = ''
   loading.value = true
   try {
+    // This page only ever works once — after the first admin exists it locks itself.
+    const setupSnap = await getDoc(doc(db, 'meta', 'setup'))
+    if (setupSnap.exists()) {
+      error.value = 'Setup has already been completed. Go to Sign in, or ask your admin for an invite code.'
+      loading.value = false
+      return
+    }
+
     const cred = await createUserWithEmailAndPassword(auth, form.value.email, form.value.password)
     await updateProfile(cred.user, { displayName: form.value.name })
 
@@ -86,7 +94,16 @@ async function handleSetup() {
       email: form.value.email,
       role: 'admin',
       workspaceId: cred.user.uid,
+      apartmentLimit: null,
+      apartmentCount: 0,
+      bookingCount: 0,
+      guestCount: 0,
       createdAt: serverTimestamp()
+    })
+
+    await setDoc(doc(db, 'meta', 'setup'), {
+      completedBy: cred.user.uid,
+      completedAt: serverTimestamp()
     })
 
     done.value = true
