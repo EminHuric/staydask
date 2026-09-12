@@ -70,6 +70,25 @@
             <span v-if="availability">{{ t('✗ Taken — {guest} is booked {a} → {b}', { guest: availability.guestName, a: fmt(availability.checkIn), b: fmt(availability.checkOut) }) }}</span>
             <span v-else>{{ t('✓ Available for these dates') }}</span>
           </div>
+
+          <!--
+            Where the booking came from.
+
+            One tick, and it is the only thing anybody has to remember: a booking
+            marked here is read by MsEe Central as one it brought, and the
+            commission is worked out there. Nothing else about this form changes,
+            and nothing needs doing in a second system.
+
+            It is a claim about this booking, so it is recorded on the booking —
+            not in a report somebody writes later from memory.
+          -->
+          <label class="checkbox-label msee-option" :class="{ on: form.viaMsee }">
+            <input type="checkbox" v-model="form.viaMsee" style="accent-color:var(--accent)" />
+            <span>
+              <span class="form-label" style="margin:0">{{ t('Booked through MsEe') }}</span>
+              <span class="msee-hint">{{ t('MsEe brought this guest. It appears in MsEe Central as their sale.') }}</span>
+            </span>
+          </label>
         </div>
 
         <!-- ── Pricing ────────────────────────────────────────────── -->
@@ -219,7 +238,7 @@ const form = ref({
   guestName: '', phone: '', origin: '',
   apartmentId: '', checkIn: '', checkOut: '',
   pricePerNight: 0, depositAmount: 0, depositPaid: false,
-  notes: '', tags: []
+  notes: '', tags: [], viaMsee: false
 })
 
 onMounted(() => {
@@ -229,6 +248,7 @@ onMounted(() => {
       guestName: b.guestName || '',
       phone: b.phone || '',
       origin: b.origin || '',
+      viaMsee: b.source === 'MSEE',
       apartmentId: b.apartmentId || '',
       checkIn: b.checkIn || '',
       checkOut: b.checkOut || '',
@@ -328,7 +348,8 @@ async function save() {
       checkOut: form.value.checkOut,
       pricePerNight: form.value.pricePerNight,
       depositAmount: form.value.depositAmount,
-      depositPaid: form.value.depositPaid
+      depositPaid: form.value.depositPaid,
+      viaMsee: form.value.viaMsee
     }
     if (props.booking) {
       await bookingsStore.updateBooking(props.booking.id, data)
@@ -439,6 +460,32 @@ form { display: flex; flex-direction: column; gap: 0; overflow-y: auto; }
   align-items: center;
   gap: 0.5rem;
   cursor: pointer;
+}
+
+/* Where the booking came from — flagged, because it decides somebody's money. */
+.msee-option {
+  align-items: flex-start;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.75rem;
+}
+
+.msee-option.on {
+  background: rgb(255 138 30 / 10%);
+  border-color: rgb(255 138 30 / 45%);
+}
+
+.msee-option > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.msee-hint {
+  color: var(--text-3);
+  font-size: 0.72rem;
+  line-height: 1.35;
 }
 
 .tags-grid {

@@ -120,6 +120,45 @@ export const useBookingsStore = defineStore('bookings', () => {
     }) || null
   }
 
+/*
+ * The stamp that says MsEe brought a booking.
+ *
+ * WHY IT LIVES ON THE BOOKING. MsEe Central counts the bookings it brought and
+ * works out its own commission from them. That question has exactly one honest
+ * answer and it is known at the moment the booking is taken — so it is recorded
+ * then, on the booking, rather than reconstructed later from somebody's memory
+ * of which guests came from where.
+ *
+ * `createdVia` separates the two ways a booking can carry this: marked here by
+ * the person taking it, or created by MsEe Central itself through the agency
+ * account. Both count the same; knowing which is which is worth a field.
+ *
+ * Writing `null` rather than dropping the keys when the box is unticked matters
+ * for edits: a booking wrongly marked must be able to become unmarked, and a
+ * missing key in a merge leaves the old value in place.
+ */
+function mseeStamp(viaMsee, existing = null) {
+  /*
+   * A booking MsEe Central created keeps its provenance, ticked or not.
+   *
+   * Checked first, and deliberately: that claim was not made here and must not
+   * be unmade here. Unticking it would leave MsEe Central holding a reservation
+   * it knows it made against a booking that denies it, and the two would
+   * disagree for ever with no way to tell which was right.
+   */
+  if (existing?.createdVia === 'MSEE_CENTRAL') return {}
+
+  if (!viaMsee) {
+    return { source: null, createdVia: null, mseeMarkedAt: null }
+  }
+
+  return {
+    source: 'MSEE',
+    createdVia: 'MSEE_RMS',
+    mseeMarkedAt: new Date().toISOString()
+  }
+}
+
   async function addBooking(data) {
     const conflict = checkConflict(data.apartmentId, data.checkIn, data.checkOut)
     if (conflict) {
@@ -193,7 +232,8 @@ export const useBookingsStore = defineStore('bookings', () => {
         payments,
         status: 'confirmed',
         workspaceId: authStore.workspaceId,
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        ...mseeStamp(data.viaMsee)
       })
 
       tx.update(aptRef, { bookedNights: [...taken, ...nights].sort() })
@@ -216,6 +256,12 @@ export const useBookingsStore = defineStore('bookings', () => {
 
     const existing = bookings.value.find(b => b.id === id)
     const updates = { ...data, updatedAt: serverTimestamp() }
+
+    /* `viaMsee` is the form's word for it; the stored shape is the stamp. */
+    if ('viaMsee' in data) {
+      delete updates.viaMsee
+      Object.assign(updates, mseeStamp(data.viaMsee, existing))
+    }
 
     if (data.checkIn && data.checkOut && data.pricePerNight != null) {
       const { days, totalPrice } = calculateBooking(data.checkIn, data.checkOut, data.pricePerNight)
