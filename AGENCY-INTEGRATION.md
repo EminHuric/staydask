@@ -19,21 +19,26 @@ own as sales.
 
 Two flags, both in the Admin panel, both main-admin only:
 
-1. **Mark as agency** on the account MsEe Central signs in as. Guarded in the
-   rules the same way `mainAdmin` is, because the self-update path would
-   otherwise let any account grant itself an agency's write access.
+1. **Mark as agency** on the account MsEe Central signs in as. It stays a
+   regular user — it does not need, and should not be given, the admin role.
+   Guarded in the rules the same way `mainAdmin` is, because the self-update path
+   would otherwise let any account grant itself an agency's write access.
 2. **Allow agency bookings** on each account that wants the agency selling for
    it. Without this, the agency can read that account and every booking it tries
    to create is refused.
 
 Both are reversible, and revoking the second stops new agency bookings
-immediately — bookings already made stay, because they are real stays.
+immediately AND hides the account from the agency again — bookings already made
+stay, because they are real stays.
+
+Until an account switches the second flag on, the agency cannot even see that
+the account exists.
 
 ## What the agency account can do
 
 | | |
 |---|---|
-| Read accounts, apartments, bookings | yes — it is an admin, the same read the Admin panel already has |
+| Read the accounts that allowed it, and their apartments and bookings | yes — and **only** those, so it needs no admin role and cannot enumerate the platform |
 | Create a booking stamped as theirs | yes, in accounts that allowed it |
 | Correct or cancel a booking it created | yes |
 | Change a booking this account entered | **no** |

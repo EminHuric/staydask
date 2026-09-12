@@ -122,7 +122,18 @@ service cloud.firestore {
     // ── users ── (doc ID == uid; workspaceId always equals the doc's own uid)
     match /users/{userId} {
       // Admins can see every account (platform management); everyone can read their own doc.
-      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      //
+      // The agency reads the accounts that have switched it on, and NOTHING else —
+      // so it does not need to be an admin, and cannot enumerate the platform.
+      // For a list query this means the query itself must say
+      // where('agencyAccess','==',true): a rule is checked against every document
+      // a query would return, so an unfiltered list fails on the first account
+      // that never invited them.
+      allow read: if isSignedIn() && (
+        request.auth.uid == userId
+        || isAdmin()
+        || (iAmAgency() && resource.data.get('agencyAccess', false) == true)
+      );
 
       allow create: if isSignedIn() && request.auth.uid == userId &&
         request.resource.data.workspaceId == request.auth.uid &&
@@ -199,7 +210,10 @@ service cloud.firestore {
     // inspection for support) but can never write another account's data
     // (writes still require isActiveOwner, i.e. workspaceId == the writer's uid).
     match /apartments/{id} {
-      allow read: if isOwner(resource.data) || isAdmin();
+      // The agency needs the units to show what is free; it is confined to the
+      // accounts that asked for it. No admin role required.
+      allow read: if isOwner(resource.data) || isAdmin()
+        || isAgencyFor(resource.data.workspaceId);
       allow create: if isActiveOwner(request.resource.data);
 
       // bookedNights is the night index that makes double booking impossible
@@ -214,7 +228,17 @@ service cloud.firestore {
     }
 
     match /bookings/{id} {
-      allow read: if isOwner(resource.data) || isAdmin();
+      /*
+       * The agency reads EVERY booking in an account that opted in, not only its
+       * own, and that is deliberate: availability is the question, and a booking
+       * the owner took on the phone blocks a unit exactly as firmly as one of the
+       * agency's. Hiding those would mean selling a room that is already taken.
+       *
+       * Which of them are the agency's is a separate question, answered by the
+       * stamp fields, and it never changes what is free.
+       */
+      allow read: if isOwner(resource.data) || isAdmin()
+        || isAgencyFor(resource.data.workspaceId);
 
       // Either the account's own owner, or the agency writing a booking stamped
       // as theirs. An owner's app never writes those stamp fields, so the two
