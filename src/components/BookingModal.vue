@@ -89,6 +89,38 @@
               <span class="msee-hint">{{ t('MsEe brought this guest. It appears in MsEe Central as their sale.') }}</span>
             </span>
           </label>
+
+          <!--
+            MsEe's cut of this booking, typed per booking.
+
+            Per booking rather than once per property, because that is how it is
+            actually agreed — a winter week and a peak August week are not the
+            same deal. Entered here, where the price is, so the two numbers are
+            decided together and nobody has to re-open the booking later to say
+            what it was worth.
+
+            The amount is shown and not typed: it follows from the price and the
+            percentage, and a third number somebody types is a third number that
+            can disagree with the two it comes from.
+          -->
+          <div v-if="form.viaMsee" class="msee-cut">
+            <div class="form-group">
+              <label class="form-label">{{ t('MsEe commission (%)') }}</label>
+              <input
+                v-model.number="form.mseeCommissionPercent"
+                class="form-input"
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+              />
+            </div>
+            <div class="msee-cut-sum">
+              <span>{{ t('MsEe earns') }}</span>
+              <strong>€{{ mseeCommission.toFixed(2) }}</strong>
+              <span class="msee-hint">{{ t('The owner keeps €{n}', { n: (totalPrice - mseeCommission).toFixed(2) }) }}</span>
+            </div>
+          </div>
         </div>
 
         <!-- ── Pricing ────────────────────────────────────────────── -->
@@ -238,7 +270,7 @@ const form = ref({
   guestName: '', phone: '', origin: '',
   apartmentId: '', checkIn: '', checkOut: '',
   pricePerNight: 0, depositAmount: 0, depositPaid: false,
-  notes: '', tags: [], viaMsee: false
+  notes: '', tags: [], viaMsee: false, mseeCommissionPercent: 0
 })
 
 onMounted(() => {
@@ -249,6 +281,7 @@ onMounted(() => {
       phone: b.phone || '',
       origin: b.origin || '',
       viaMsee: b.source === 'MSEE',
+      mseeCommissionPercent: b.mseeCommissionPercent || 0,
       apartmentId: b.apartmentId || '',
       checkIn: b.checkIn || '',
       checkOut: b.checkOut || '',
@@ -309,6 +342,14 @@ const nights = computed(() => {
   return n > 0 ? n : 0
 })
 const totalPrice = computed(() => nights.value * (form.value.pricePerNight || 0))
+
+// What MsEe earns on this booking: its percentage of what the guest pays.
+// Rounded to the cent here so the figure on screen is the figure that is stored.
+const mseeCommission = computed(() => {
+  if (!form.value.viaMsee) return 0
+  const pct = Number(form.value.mseeCommissionPercent) || 0
+  return Math.round(totalPrice.value * pct) / 100
+})
 const nightsLabel = computed(() =>
   nights.value === 1 ? t('{n} night', { n: 1 }) : t('{n} nights', { n: nights.value })
 )
@@ -349,7 +390,9 @@ async function save() {
       pricePerNight: form.value.pricePerNight,
       depositAmount: form.value.depositAmount,
       depositPaid: form.value.depositPaid,
-      viaMsee: form.value.viaMsee
+      viaMsee: form.value.viaMsee,
+      mseeCommissionPercent: form.value.mseeCommissionPercent,
+      mseeCommissionAmount: mseeCommission.value
     }
     if (props.booking) {
       await bookingsStore.updateBooking(props.booking.id, data)
@@ -486,6 +529,38 @@ form { display: flex; flex-direction: column; gap: 0; overflow-y: auto; }
   color: var(--text-3);
   font-size: 0.72rem;
   line-height: 1.35;
+}
+
+.msee-cut {
+  align-items: flex-end;
+  background: rgb(255 138 30 / 7%);
+  border: 1px solid rgb(255 138 30 / 30%);
+  border-radius: 8px;
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  padding: 0.6rem 0.75rem;
+}
+
+.msee-cut .form-group {
+  margin: 0;
+  max-width: 120px;
+}
+
+.msee-cut-sum {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-bottom: 0.35rem;
+}
+
+.msee-cut-sum > span:first-child {
+  color: var(--text-3);
+  font-size: 0.72rem;
+}
+
+.msee-cut-sum strong {
+  font-size: 1.05rem;
 }
 
 .tags-grid {

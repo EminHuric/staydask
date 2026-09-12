@@ -137,7 +137,7 @@ export const useBookingsStore = defineStore('bookings', () => {
  * for edits: a booking wrongly marked must be able to become unmarked, and a
  * missing key in a merge leaves the old value in place.
  */
-function mseeStamp(viaMsee, existing = null) {
+function mseeStamp(viaMsee, existing = null, cut = {}) {
   /*
    * A booking MsEe Central created keeps its provenance, ticked or not.
    *
@@ -149,13 +149,30 @@ function mseeStamp(viaMsee, existing = null) {
   if (existing?.createdVia === 'MSEE_CENTRAL') return {}
 
   if (!viaMsee) {
-    return { source: null, createdVia: null, mseeMarkedAt: null }
+    return {
+      source: null,
+      createdVia: null,
+      mseeMarkedAt: null,
+      mseeCommissionPercent: null,
+      mseeCommissionAmount: null
+    }
   }
 
   return {
     source: 'MSEE',
     createdVia: 'MSEE_RMS',
-    mseeMarkedAt: new Date().toISOString()
+    mseeMarkedAt: new Date().toISOString(),
+    /*
+     * The commission, as entered on this booking.
+     *
+     * Both the percentage and the money: the percentage is what was agreed and
+     * the amount is what it came to at this booking's price. Keeping the
+     * percentage means a corrected price can be re-applied knowingly; keeping
+     * the amount means MsEe Central reads what was decided rather than
+     * recomputing it from terms that may since have changed.
+     */
+    mseeCommissionPercent: Number(cut.percent) || 0,
+    mseeCommissionAmount: Number(cut.amount) || 0
   }
 }
 
@@ -233,7 +250,10 @@ function mseeStamp(viaMsee, existing = null) {
         status: 'confirmed',
         workspaceId: authStore.workspaceId,
         createdAt: serverTimestamp(),
-        ...mseeStamp(data.viaMsee)
+        ...mseeStamp(data.viaMsee, null, {
+          percent: data.mseeCommissionPercent,
+          amount: data.mseeCommissionAmount
+        })
       })
 
       tx.update(aptRef, { bookedNights: [...taken, ...nights].sort() })
@@ -260,7 +280,15 @@ function mseeStamp(viaMsee, existing = null) {
     /* `viaMsee` is the form's word for it; the stored shape is the stamp. */
     if ('viaMsee' in data) {
       delete updates.viaMsee
-      Object.assign(updates, mseeStamp(data.viaMsee, existing))
+      delete updates.mseeCommissionPercent
+      delete updates.mseeCommissionAmount
+      Object.assign(
+        updates,
+        mseeStamp(data.viaMsee, existing, {
+          percent: data.mseeCommissionPercent,
+          amount: data.mseeCommissionAmount
+        })
+      )
     }
 
     if (data.checkIn && data.checkOut && data.pricePerNight != null) {

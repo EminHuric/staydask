@@ -46,6 +46,24 @@ the account exists.
 | Touch guests, notes or invite codes | **no** |
 | Delete anything | **no** — it cancels, which keeps the record |
 
+## Marking a booking as the agency's
+
+On the booking form there is a checkbox, **Booked through MsEe**, and with it a
+field for **MsEe commission (%)**. Tick it, type the percentage agreed for that
+stay, and the amount is worked out from the price and shown beside it.
+
+Per booking rather than once per property, because that is how it is agreed — a
+winter week and a peak August week are not the same deal. Both numbers are stored:
+
+```js
+mseeCommissionPercent: 15
+mseeCommissionAmount:  75          // 15% of this booking's €500
+```
+
+MsEe Central reads the **amount**. A figure a person decided for this stay beats
+a standing rule written for stays in general, so the amount wins over whatever
+default the property's listing carries.
+
 ## How its bookings are marked
 
 Four fields, all required by the rules at creation, so an agency booking can
