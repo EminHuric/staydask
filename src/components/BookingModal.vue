@@ -104,7 +104,25 @@
             can disagree with the two it comes from.
           -->
           <div v-if="form.viaMsee" class="msee-cut">
-            <div class="form-group">
+            <!--
+              Two ways the cut is agreed, because both happen.
+
+              A percentage of the booking, or a flat amount per night. Only the
+              field the chosen way needs is shown — offering both at once invites
+              somebody to fill in both and then wonder which one counted.
+            -->
+            <div class="msee-modes">
+              <label class="msee-mode" :class="{ on: form.mseeCommissionMode === 'percent' }">
+                <input type="radio" value="percent" v-model="form.mseeCommissionMode" />
+                <span>{{ t('Percentage') }}</span>
+              </label>
+              <label class="msee-mode" :class="{ on: form.mseeCommissionMode === 'per_night' }">
+                <input type="radio" value="per_night" v-model="form.mseeCommissionMode" />
+                <span>{{ t('Per night') }}</span>
+              </label>
+            </div>
+
+            <div v-if="form.mseeCommissionMode === 'percent'" class="form-group">
               <label class="form-label">{{ t('MsEe commission (%)') }}</label>
               <input
                 v-model.number="form.mseeCommissionPercent"
@@ -115,10 +133,34 @@
                 step="0.1"
               />
             </div>
+
+            <div v-else class="form-group">
+              <label class="form-label">{{ t('MsEe per night (€)') }}</label>
+              <input
+                v-model.number="form.mseeCommissionPerNight"
+                class="form-input"
+                type="number"
+                min="0"
+                step="0.01"
+              />
+            </div>
+
+            <!--
+              The total, worked out and never typed.
+
+              It follows from the price, the nights and the one figure above, so
+              typing it would be a fourth number that can disagree with the three
+              it comes from.
+            -->
             <div class="msee-cut-sum">
-              <span>{{ t('MsEe earns') }}</span>
+              <span>{{ t('MsEe earns in total') }}</span>
               <strong>€{{ mseeCommission.toFixed(2) }}</strong>
-              <span class="msee-hint">{{ t('The owner keeps €{n}', { n: (totalPrice - mseeCommission).toFixed(2) }) }}</span>
+              <span class="msee-hint">
+                {{ form.mseeCommissionMode === 'per_night'
+                  ? t('{n} night(s) × €{rate}', { n: nights, rate: (Number(form.mseeCommissionPerNight) || 0).toFixed(2) })
+                  : t('{pct}% of €{total}', { pct: Number(form.mseeCommissionPercent) || 0, total: totalPrice.toFixed(2) }) }}
+                · {{ t('owner keeps €{n}', { n: (totalPrice - mseeCommission).toFixed(2) }) }}
+              </span>
             </div>
           </div>
         </div>
@@ -270,7 +312,8 @@ const form = ref({
   guestName: '', phone: '', origin: '',
   apartmentId: '', checkIn: '', checkOut: '',
   pricePerNight: 0, depositAmount: 0, depositPaid: false,
-  notes: '', tags: [], viaMsee: false, mseeCommissionPercent: 0
+  notes: '', tags: [], viaMsee: false,
+  mseeCommissionMode: 'percent', mseeCommissionPercent: 0, mseeCommissionPerNight: 0
 })
 
 onMounted(() => {
@@ -281,7 +324,9 @@ onMounted(() => {
       phone: b.phone || '',
       origin: b.origin || '',
       viaMsee: b.source === 'MSEE',
+      mseeCommissionMode: b.mseeCommissionMode || 'percent',
       mseeCommissionPercent: b.mseeCommissionPercent || 0,
+      mseeCommissionPerNight: b.mseeCommissionPerNight || 0,
       apartmentId: b.apartmentId || '',
       checkIn: b.checkIn || '',
       checkOut: b.checkOut || '',
@@ -343,10 +388,16 @@ const nights = computed(() => {
 })
 const totalPrice = computed(() => nights.value * (form.value.pricePerNight || 0))
 
-// What MsEe earns on this booking: its percentage of what the guest pays.
+// What MsEe earns on this booking, whichever way it was agreed.
 // Rounded to the cent here so the figure on screen is the figure that is stored.
 const mseeCommission = computed(() => {
   if (!form.value.viaMsee) return 0
+
+  if (form.value.mseeCommissionMode === 'per_night') {
+    const rate = Number(form.value.mseeCommissionPerNight) || 0
+    return Math.round(nights.value * rate * 100) / 100
+  }
+
   const pct = Number(form.value.mseeCommissionPercent) || 0
   return Math.round(totalPrice.value * pct) / 100
 })
@@ -391,7 +442,9 @@ async function save() {
       depositAmount: form.value.depositAmount,
       depositPaid: form.value.depositPaid,
       viaMsee: form.value.viaMsee,
+      mseeCommissionMode: form.value.mseeCommissionMode,
       mseeCommissionPercent: form.value.mseeCommissionPercent,
+      mseeCommissionPerNight: form.value.mseeCommissionPerNight,
       mseeCommissionAmount: mseeCommission.value
     }
     if (props.booking) {
@@ -531,12 +584,39 @@ form { display: flex; flex-direction: column; gap: 0; overflow-y: auto; }
   line-height: 1.35;
 }
 
+.msee-modes {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.msee-mode {
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  display: flex;
+  font-size: 0.78rem;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+}
+
+.msee-mode.on {
+  border-color: rgb(255 138 30 / 60%);
+  color: var(--text);
+}
+
+.msee-mode input {
+  accent-color: var(--accent);
+  margin: 0;
+}
+
 .msee-cut {
   align-items: flex-end;
   background: rgb(255 138 30 / 7%);
   border: 1px solid rgb(255 138 30 / 30%);
   border-radius: 8px;
   display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
   margin-top: 0.5rem;
   padding: 0.6rem 0.75rem;

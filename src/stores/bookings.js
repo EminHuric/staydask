@@ -54,7 +54,9 @@ function mseeStamp(viaMsee, cut = {}) {
       source: null,
       createdVia: null,
       mseeMarkedAt: null,
+      mseeCommissionMode: null,
       mseeCommissionPercent: null,
+      mseeCommissionPerNight: null,
       mseeCommissionAmount: null
     }
   }
@@ -63,7 +65,16 @@ function mseeStamp(viaMsee, cut = {}) {
     source: 'MSEE',
     createdVia: 'MSEE_RMS',
     mseeMarkedAt: new Date().toISOString(),
+    /*
+     * How it was agreed, and the figure that way needs, and the total.
+     *
+     * The total is what MsEe Central reports; the other two are kept so a
+     * corrected price can be re-applied knowingly, and so anybody looking at the
+     * booking can see how the number was arrived at rather than just what it is.
+     */
+    mseeCommissionMode: cut.mode === 'per_night' ? 'per_night' : 'percent',
     mseeCommissionPercent: Number(cut.percent) || 0,
+    mseeCommissionPerNight: Number(cut.perNight) || 0,
     mseeCommissionAmount: Number(cut.amount) || 0
   }
 }
@@ -198,12 +209,16 @@ export const useBookingsStore = defineStore('bookings', () => {
     /* `viaMsee` is the form's word for it; the stored shape is the stamp. */
     if ('viaMsee' in data) {
       delete updates.viaMsee
+      delete updates.mseeCommissionMode
       delete updates.mseeCommissionPercent
+      delete updates.mseeCommissionPerNight
       delete updates.mseeCommissionAmount
       Object.assign(
         updates,
         mseeStamp(data.viaMsee, {
+          mode: data.mseeCommissionMode,
           percent: data.mseeCommissionPercent,
+          perNight: data.mseeCommissionPerNight,
           amount: data.mseeCommissionAmount
         })
       )
