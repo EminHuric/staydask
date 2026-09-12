@@ -56,6 +56,61 @@ service cloud.firestore {
       return request.resource.data[field] == resource.data[field];
     }
 
+    function changedOnly(allowed) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowed);
+    }
+
+    // ── the selling agency ──
+    // An outside agency (MsEe Central) that brings bookings to accounts on this
+    // platform. It signs in as its own account and writes bookings into accounts
+    // that have asked it to.
+    //
+    // TWO SWITCHES, BOTH DELIBERATE, AND NEITHER CAN BE FLIPPED BY THE AGENCY:
+    //
+    //   agency:true on the agency's own user doc — only a main admin may set it
+    //   (see the users update rule, which guards it exactly like mainAdmin).
+    //   Without that guard any signed-in account could declare itself the agency
+    //   by updating its own profile, which the self-update path allows.
+    //
+    //   agencyAccess:true on the account being sold for. The account's own owner
+    //   can set it (that is their consent) and so can an admin managing them.
+    //
+    // What the agency may do is narrow: create a booking that is STAMPED as
+    // theirs, correct or cancel one it created, and keep the night index on an
+    // apartment in step. It can read (it is also an admin) but it can never
+    // touch an apartment's details, a guest, or a booking the owner made.
+    function iAmAgency() {
+      return isSignedIn() && myProfile().get('agency', false) == true;
+    }
+
+    function accountWantsAgency(workspaceId) {
+      return get(/databases/$(database)/documents/users/$(workspaceId))
+        .data.get('agencyAccess', false) == true;
+    }
+
+    function isAgencyFor(workspaceId) {
+      return iAmAgency() && accountWantsAgency(workspaceId);
+    }
+
+    // A booking the agency is creating must say so, in fields the owner's own
+    // app never writes. That is what makes "who brought this booking" a fact in
+    // the database rather than a label somebody can claim later.
+    function isAgencyBooking(data) {
+      return isAgencyFor(data.workspaceId)
+        && data.source == 'MSEE'
+        && data.createdVia == 'MSEE_CENTRAL'
+        && data.createdByAgency == request.auth.uid
+        && data.mseeReservationId is string
+        && data.mseeReservationId.size() > 0;
+    }
+
+    // Only the booking it brought, and never its own stamp.
+    function isMyAgencyBooking() {
+      return isAgencyFor(resource.data.workspaceId)
+        && resource.data.get('source', '') == 'MSEE'
+        && resource.data.get('createdByAgency', '') == request.auth.uid;
+    }
+
     // One-time bootstrap marker — created by the very first admin (via /setup).
     // Its mere existence permanently closes the no-invite-code admin bootstrap path.
     match /meta/setup {
@@ -92,6 +147,10 @@ service cloud.firestore {
       // are one. .get(...) tolerates docs created before a field existed.
       allow update: if isSignedIn() && unchanged('workspaceId')
         && (request.resource.data.get('mainAdmin', false) == resource.data.get('mainAdmin', false) || iAmMainAdmin())
+        // Declaring an account to be the selling agency is a main admin's
+        // decision. Without this line the self-update path below would let any
+        // account grant itself the agency's write access.
+        && (request.resource.data.get('agency', false) == resource.data.get('agency', false) || iAmMainAdmin())
         && (
           (request.auth.uid == userId
             && (unchanged('role') || (isAdmin() && !isOwnerEmail(resource.data)))
@@ -142,14 +201,43 @@ service cloud.firestore {
     match /apartments/{id} {
       allow read: if isOwner(resource.data) || isAdmin();
       allow create: if isActiveOwner(request.resource.data);
-      allow update: if isActiveOwner(resource.data) && unchanged('workspaceId');
+
+      // bookedNights is the night index that makes double booking impossible
+      // rather than unlikely — see addBooking in src/stores/bookings.js. The
+      // agency must be able to write it, because it books into this apartment
+      // too; it may write NOTHING else here, so the name, price and capacity
+      // stay entirely the owner's.
+      allow update: if (isActiveOwner(resource.data) && unchanged('workspaceId'))
+        || (isAgencyFor(resource.data.workspaceId) && changedOnly(['bookedNights']));
+
       allow delete: if isActiveOwner(resource.data);
     }
 
     match /bookings/{id} {
       allow read: if isOwner(resource.data) || isAdmin();
-      allow create: if isActiveOwner(request.resource.data);
-      allow update: if isActiveOwner(resource.data) && unchanged('workspaceId');
+
+      // Either the account's own owner, or the agency writing a booking stamped
+      // as theirs. An owner's app never writes those stamp fields, so the two
+      // kinds of booking can always be told apart — which is the whole point:
+      // the account's turnover is all of them, the agency's sales are only its
+      // own.
+      allow create: if isActiveOwner(request.resource.data)
+        || isAgencyBooking(request.resource.data);
+
+      // The agency may correct or cancel what it brought. It may not rewrite
+      // whose booking it is, nor move it to another account.
+      allow update: if (isActiveOwner(resource.data) && unchanged('workspaceId'))
+        || (
+          isMyAgencyBooking()
+          && unchanged('workspaceId')
+          && unchanged('source')
+          && unchanged('createdVia')
+          && unchanged('createdByAgency')
+          && unchanged('mseeReservationId')
+        );
+
+      // Deleting stays with the owner. The agency cancels, which keeps the
+      // record of a booking that existed and then did not happen.
       allow delete: if isActiveOwner(resource.data);
     }
 

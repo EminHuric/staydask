@@ -1,12 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import {
-  collection, addDoc, updateDoc, deleteDoc,
-  doc, onSnapshot, query, where, serverTimestamp
+  collection, updateDoc, deleteDoc,
+  doc, onSnapshot, query, where, serverTimestamp, runTransaction
 } from 'firebase/firestore'
 import {
   differenceInDays, parseISO, isWithinInterval,
-  startOfDay, isBefore, isAfter, format
+  startOfDay, isBefore, isAfter, format, addDays
 } from 'date-fns'
 import { db } from '../firebase'
 import { useAuthStore } from './auth'
@@ -19,6 +19,41 @@ function generateReservationId() {
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2)
+}
+
+// ── the night index ──────────────────────────────────────────────────────
+// Every night a stay occupies, as 'YYYY-MM-DD'. Check-in is included and
+// check-out is not: a guest leaving on the 4th frees the 4th, which is exactly
+// why a same-day checkout/checkin pair has never been a clash here.
+export function nightsOf(checkIn, checkOut) {
+  const nights = []
+  const end = parseISO(checkOut)
+  let day = parseISO(checkIn)
+  // A guard, not a feature: a year of nights is already absurd for one stay,
+  // and an inverted date range must not spin.
+  for (let i = 0; isBefore(day, end) && i < 370; i += 1) {
+    nights.push(format(day, 'yyyy-MM-dd'))
+    day = addDays(day, 1)
+  }
+  return nights
+}
+
+// Which nights an apartment is occupied, from the bookings themselves.
+function nightsTakenBy(bookingList, apartmentId, excludeId = null) {
+  const taken = new Set()
+  bookingList.forEach(b => {
+    if (b.apartmentId !== apartmentId || b.status === 'cancelled' || b.id === excludeId) return
+    nightsOf(b.checkIn, b.checkOut).forEach(n => taken.add(n))
+  })
+  return taken
+}
+
+function conflictError(nights, taken) {
+  const clash = nights.find(n => taken.includes(n))
+  if (!clash) return null
+  const e = new Error(`Already booked: this apartment is taken on ${clash}.`)
+  e.isConflict = true
+  return e
 }
 
 export function calcPaymentStatus(totalPaid, totalPrice, depositAmount) {
@@ -55,6 +90,8 @@ export const useBookingsStore = defineStore('bookings', () => {
       bookings.value = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       loading.value = false
       syncCount(workspaceId, bookings.value.length)
+      // Index drift is repaired here, where the real bookings have just arrived.
+      reconcileNights().catch(() => {})
     })
   }
 
@@ -110,27 +147,56 @@ export const useBookingsStore = defineStore('bookings', () => {
     }
     const totalPaid = payments.reduce((s, p) => s + p.amount, 0)
 
-    await addDoc(collection(db, 'bookings'), {
-      reservationId: generateReservationId(),
-      guestName: data.guestName || '',
-      phone: data.phone || '',
-      origin: data.origin || '',
-      notes: data.notes || '',
-      tags: data.tags || [],
-      apartmentId: data.apartmentId,
-      checkIn: data.checkIn,
-      checkOut: data.checkOut,
-      pricePerNight: Number(data.pricePerNight) || 0,
-      days,
-      totalPrice,
-      depositAmount,
-      depositPaid: data.depositPaid || false,
-      totalPaid,
-      paymentStatus: calcPaymentStatus(totalPaid, totalPrice, depositAmount),
-      payments,
-      status: 'confirmed',
-      workspaceId: authStore.workspaceId,
-      createdAt: serverTimestamp()
+    /*
+     * The booking and the nights it takes, written together or not at all.
+     *
+     * checkConflict above reads the list this browser happens to hold, which is
+     * the right first answer — it names the guest who is already there — but it
+     * is not a guarantee: two people booking the same apartment in the same
+     * second both read a list without the other's booking in it, and both
+     * succeed. Nothing on the server was stopping that.
+     *
+     * So the nights live on the apartment document, and the booking is created
+     * inside a transaction that reads them first. Firestore retries a
+     * transaction whose document changed underneath it, so the second writer
+     * re-reads, sees the first writer's nights, and fails. That is a real
+     * guarantee rather than a narrow window.
+     */
+    const nights = nightsOf(data.checkIn, data.checkOut)
+
+    await runTransaction(db, async (tx) => {
+      const aptRef = doc(db, 'apartments', data.apartmentId)
+      const aptSnap = await tx.get(aptRef)
+      if (!aptSnap.exists()) throw new Error('Apartment not found.')
+
+      const taken = aptSnap.data().bookedNights || []
+      const clash = conflictError(nights, taken)
+      if (clash) throw clash
+
+      tx.set(doc(collection(db, 'bookings')), {
+        reservationId: generateReservationId(),
+        guestName: data.guestName || '',
+        phone: data.phone || '',
+        origin: data.origin || '',
+        notes: data.notes || '',
+        tags: data.tags || [],
+        apartmentId: data.apartmentId,
+        checkIn: data.checkIn,
+        checkOut: data.checkOut,
+        pricePerNight: Number(data.pricePerNight) || 0,
+        days,
+        totalPrice,
+        depositAmount,
+        depositPaid: data.depositPaid || false,
+        totalPaid,
+        paymentStatus: calcPaymentStatus(totalPaid, totalPrice, depositAmount),
+        payments,
+        status: 'confirmed',
+        workspaceId: authStore.workspaceId,
+        createdAt: serverTimestamp()
+      })
+
+      tx.update(aptRef, { bookedNights: [...taken, ...nights].sort() })
     })
     // bookingCount is reconciled by the snapshot listener (syncCount).
   }
@@ -161,18 +227,33 @@ export const useBookingsStore = defineStore('bookings', () => {
     }
 
     await updateDoc(doc(db, 'bookings', id), updates)
+
+    // A moved stay frees the nights it used to hold and takes new ones. Done
+    // after the write rather than inside it, because the authority for the index
+    // is the bookings themselves — reindex recomputes from them, so it cannot
+    // drift even if this call is interrupted halfway.
+    if (existing) {
+      const moved = data.apartmentId && data.apartmentId !== existing.apartmentId
+      await reindex(existing.apartmentId)
+      if (moved) await reindex(data.apartmentId)
+    }
   }
 
   async function cancelBooking(id) {
+    const existing = bookings.value.find(b => b.id === id)
     await updateDoc(doc(db, 'bookings', id), {
       status: 'cancelled',
       cancelledAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     })
+    // A cancelled stay must free its nights, or the apartment stays unsellable.
+    if (existing) await reindex(existing.apartmentId, id)
   }
 
   async function deleteBooking(id) {
+    const existing = bookings.value.find(b => b.id === id)
     await deleteDoc(doc(db, 'bookings', id))
+    if (existing) await reindex(existing.apartmentId, id)
     // bookingCount is reconciled by the snapshot listener (syncCount).
   }
 
@@ -201,6 +282,45 @@ export const useBookingsStore = defineStore('bookings', () => {
       paymentStatus: calcPaymentStatus(totalPaid, booking.totalPrice, booking.depositAmount || 0),
       updatedAt: serverTimestamp()
     })
+  }
+
+  /*
+   * Rewrite one apartment's night index from the bookings themselves.
+   *
+   * The bookings are the truth; the index is a copy kept so that a create can be
+   * atomic. A copy that can drift needs a way back, and this is it: recomputed
+   * rather than adjusted, so one interrupted call cannot leave a night locked
+   * for ever.
+   *
+   * `excludeId` is for the booking being cancelled or deleted, whose removal has
+   * not reached the local snapshot yet.
+   */
+  async function reindex(apartmentId, excludeId = null) {
+    if (!apartmentId) return
+    const nights = [...nightsTakenBy(bookings.value, apartmentId, excludeId)].sort()
+    await updateDoc(doc(db, 'apartments', apartmentId), { bookedNights: nights }).catch(() => {})
+  }
+
+  /*
+   * Bring every apartment's index in step with reality.
+   *
+   * The same self-healing idea the counters already use: the owner opening their
+   * own data is the moment drift gets fixed, and it is also how apartments that
+   * existed before there was an index get one. Only differences are written, so
+   * the usual case costs nothing.
+   */
+  async function reconcileNights(apartmentIds) {
+    const { useApartmentsStore } = await import('./apartments')
+    const apartmentsStore = useApartmentsStore()
+    const list = apartmentIds || apartmentsStore.apartments.map(a => a.id)
+
+    for (const apt of apartmentsStore.apartments) {
+      if (!list.includes(apt.id)) continue
+      const want = [...nightsTakenBy(bookings.value, apt.id)].sort()
+      const have = [...(apt.bookedNights || [])].sort()
+      if (want.length === have.length && want.every((n, i) => n === have[i])) continue
+      await updateDoc(doc(db, 'apartments', apt.id), { bookedNights: want }).catch(() => {})
+    }
   }
 
   function isDateBooked(apartmentId, date) {
@@ -278,6 +398,7 @@ export const useBookingsStore = defineStore('bookings', () => {
     bookings, loading,
     subscribe, unsubscribeAll,
     calculateBooking, checkConflict, calcPaymentStatus,
+    nightsOf, reindex, reconcileNights,
     addBooking, updateBooking, cancelBooking, deleteBooking,
     addPayment, removePayment,
     isDateBooked, bookingsForApartment,
