@@ -97,30 +97,6 @@ export const useAdminStore = defineStore('admin', () => {
     await updateDoc(doc(db, 'users', userId), { mainAdmin: !!value })
   }
 
-  // ── the selling agency ──
-  //
-  // Two switches that work together, and neither is much use alone:
-  //
-  //   agency:true marks the account an outside agency signs in as. Only a main
-  //   admin can set it — the security rules guard it exactly like mainAdmin,
-  //   because the self-update path would otherwise let any account grant itself
-  //   an agency's write access.
-  //
-  //   agencyAccess:true is one account saying "that agency may book into my
-  //   calendar". Without it the agency can read this account but every booking it
-  //   tries to create is refused.
-  //
-  // What the agency can then do is narrow and enforced by the rules, not here: a
-  // booking stamped as theirs, and nothing else. It cannot touch an apartment, a
-  // guest, or a booking this account entered itself.
-  async function setUserAgency(userId, value) {
-    await updateDoc(doc(db, 'users', userId), { agency: !!value })
-  }
-
-  async function setUserAgencyAccess(userId, value) {
-    await updateDoc(doc(db, 'users', userId), { agencyAccess: !!value })
-  }
-
   // Reversible block: disabled users keep all their data but are refused entry
   // (enforced in the auth store on login and by the Firestore security rules).
   async function setUserDisabled(userId, disabled) {
@@ -207,7 +183,6 @@ export const useAdminStore = defineStore('admin', () => {
     subscribeInviteCodes, subscribeUsers, unsubscribeAll,
     createInviteCode, toggleCodeActive, deleteInviteCode, setUserRole,
     setUserMainAdmin, setUserDisabled, deleteUser,
-    setUserAgency, setUserAgencyAccess,
     subscribeUserNotes, unsubscribeUserNotes, addUserNote, deleteUserNote,
     loadSuperAdmin, loadUserData, clearInspect
   }

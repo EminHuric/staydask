@@ -1,12 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import {
-  collection, updateDoc, deleteDoc,
-  doc, onSnapshot, query, where, serverTimestamp, runTransaction
+  collection, addDoc, updateDoc, deleteDoc,
+  doc, onSnapshot, query, where, serverTimestamp
 } from 'firebase/firestore'
 import {
   differenceInDays, parseISO, isWithinInterval,
-  startOfDay, isBefore, isAfter, format, addDays
+  startOfDay, isBefore, isAfter, format
 } from 'date-fns'
 import { db } from '../firebase'
 import { useAuthStore } from './auth'
@@ -21,46 +21,51 @@ function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2)
 }
 
-// ── the night index ──────────────────────────────────────────────────────
-// Every night a stay occupies, as 'YYYY-MM-DD'. Check-in is included and
-// check-out is not: a guest leaving on the 4th frees the 4th, which is exactly
-// why a same-day checkout/checkin pair has never been a clash here.
-export function nightsOf(checkIn, checkOut) {
-  const nights = []
-  const end = parseISO(checkOut)
-  let day = parseISO(checkIn)
-  // A guard, not a feature: a year of nights is already absurd for one stay,
-  // and an inverted date range must not spin.
-  for (let i = 0; isBefore(day, end) && i < 370; i += 1) {
-    nights.push(format(day, 'yyyy-MM-dd'))
-    day = addDays(day, 1)
-  }
-  return nights
-}
-
-// Which nights an apartment is occupied, from the bookings themselves.
-function nightsTakenBy(bookingList, apartmentId, excludeId = null) {
-  const taken = new Set()
-  bookingList.forEach(b => {
-    if (b.apartmentId !== apartmentId || b.status === 'cancelled' || b.id === excludeId) return
-    nightsOf(b.checkIn, b.checkOut).forEach(n => taken.add(n))
-  })
-  return taken
-}
-
-function conflictError(nights, taken) {
-  const clash = nights.find(n => taken.includes(n))
-  if (!clash) return null
-  const e = new Error(`Already booked: this apartment is taken on ${clash}.`)
-  e.isConflict = true
-  return e
-}
-
 export function calcPaymentStatus(totalPaid, totalPrice, depositAmount) {
   if (totalPaid >= totalPrice && totalPrice > 0) return 'paid'
   if (depositAmount > 0 && totalPaid > 0 && totalPaid <= depositAmount) return 'deposit_paid'
   if (totalPaid > 0) return 'partial'
   return 'unpaid'
+}
+
+/*
+ * The stamp that says MsEe brought a booking.
+ *
+ * WHY IT LIVES ON THE BOOKING. MsEe Central counts the bookings MsEe brought and
+ * reports its own commission from them. That question has one honest answer and
+ * it is known at the moment the booking is taken — so it is recorded then, on the
+ * booking, rather than reconstructed later from somebody's memory of which guests
+ * came from where.
+ *
+ * Nothing outside this file reads it here: MsEe Central signs in and reads these
+ * bookings itself. This app's job is only to record what was decided.
+ *
+ * Both numbers are kept. The percentage is what was agreed, so a corrected price
+ * can be re-applied knowingly; the amount is what it came to at this booking's
+ * price, which is the figure MsEe Central reports.
+ *
+ * `null` rather than dropped keys when the box is unticked: a booking wrongly
+ * marked must be able to become unmarked, and a missing key in a merge leaves
+ * the old value sitting there.
+ */
+function mseeStamp(viaMsee, cut = {}) {
+  if (!viaMsee) {
+    return {
+      source: null,
+      createdVia: null,
+      mseeMarkedAt: null,
+      mseeCommissionPercent: null,
+      mseeCommissionAmount: null
+    }
+  }
+
+  return {
+    source: 'MSEE',
+    createdVia: 'MSEE_RMS',
+    mseeMarkedAt: new Date().toISOString(),
+    mseeCommissionPercent: Number(cut.percent) || 0,
+    mseeCommissionAmount: Number(cut.amount) || 0
+  }
 }
 
 export const useBookingsStore = defineStore('bookings', () => {
@@ -90,8 +95,6 @@ export const useBookingsStore = defineStore('bookings', () => {
       bookings.value = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       loading.value = false
       syncCount(workspaceId, bookings.value.length)
-      // Index drift is repaired here, where the real bookings have just arrived.
-      reconcileNights().catch(() => {})
     })
   }
 
@@ -120,62 +123,6 @@ export const useBookingsStore = defineStore('bookings', () => {
     }) || null
   }
 
-/*
- * The stamp that says MsEe brought a booking.
- *
- * WHY IT LIVES ON THE BOOKING. MsEe Central counts the bookings it brought and
- * works out its own commission from them. That question has exactly one honest
- * answer and it is known at the moment the booking is taken — so it is recorded
- * then, on the booking, rather than reconstructed later from somebody's memory
- * of which guests came from where.
- *
- * `createdVia` separates the two ways a booking can carry this: marked here by
- * the person taking it, or created by MsEe Central itself through the agency
- * account. Both count the same; knowing which is which is worth a field.
- *
- * Writing `null` rather than dropping the keys when the box is unticked matters
- * for edits: a booking wrongly marked must be able to become unmarked, and a
- * missing key in a merge leaves the old value in place.
- */
-function mseeStamp(viaMsee, existing = null, cut = {}) {
-  /*
-   * A booking MsEe Central created keeps its provenance, ticked or not.
-   *
-   * Checked first, and deliberately: that claim was not made here and must not
-   * be unmade here. Unticking it would leave MsEe Central holding a reservation
-   * it knows it made against a booking that denies it, and the two would
-   * disagree for ever with no way to tell which was right.
-   */
-  if (existing?.createdVia === 'MSEE_CENTRAL') return {}
-
-  if (!viaMsee) {
-    return {
-      source: null,
-      createdVia: null,
-      mseeMarkedAt: null,
-      mseeCommissionPercent: null,
-      mseeCommissionAmount: null
-    }
-  }
-
-  return {
-    source: 'MSEE',
-    createdVia: 'MSEE_RMS',
-    mseeMarkedAt: new Date().toISOString(),
-    /*
-     * The commission, as entered on this booking.
-     *
-     * Both the percentage and the money: the percentage is what was agreed and
-     * the amount is what it came to at this booking's price. Keeping the
-     * percentage means a corrected price can be re-applied knowingly; keeping
-     * the amount means MsEe Central reads what was decided rather than
-     * recomputing it from terms that may since have changed.
-     */
-    mseeCommissionPercent: Number(cut.percent) || 0,
-    mseeCommissionAmount: Number(cut.amount) || 0
-  }
-}
-
   async function addBooking(data) {
     const conflict = checkConflict(data.apartmentId, data.checkIn, data.checkOut)
     if (conflict) {
@@ -203,60 +150,31 @@ function mseeStamp(viaMsee, existing = null, cut = {}) {
     }
     const totalPaid = payments.reduce((s, p) => s + p.amount, 0)
 
-    /*
-     * The booking and the nights it takes, written together or not at all.
-     *
-     * checkConflict above reads the list this browser happens to hold, which is
-     * the right first answer — it names the guest who is already there — but it
-     * is not a guarantee: two people booking the same apartment in the same
-     * second both read a list without the other's booking in it, and both
-     * succeed. Nothing on the server was stopping that.
-     *
-     * So the nights live on the apartment document, and the booking is created
-     * inside a transaction that reads them first. Firestore retries a
-     * transaction whose document changed underneath it, so the second writer
-     * re-reads, sees the first writer's nights, and fails. That is a real
-     * guarantee rather than a narrow window.
-     */
-    const nights = nightsOf(data.checkIn, data.checkOut)
-
-    await runTransaction(db, async (tx) => {
-      const aptRef = doc(db, 'apartments', data.apartmentId)
-      const aptSnap = await tx.get(aptRef)
-      if (!aptSnap.exists()) throw new Error('Apartment not found.')
-
-      const taken = aptSnap.data().bookedNights || []
-      const clash = conflictError(nights, taken)
-      if (clash) throw clash
-
-      tx.set(doc(collection(db, 'bookings')), {
-        reservationId: generateReservationId(),
-        guestName: data.guestName || '',
-        phone: data.phone || '',
-        origin: data.origin || '',
-        notes: data.notes || '',
-        tags: data.tags || [],
-        apartmentId: data.apartmentId,
-        checkIn: data.checkIn,
-        checkOut: data.checkOut,
-        pricePerNight: Number(data.pricePerNight) || 0,
-        days,
-        totalPrice,
-        depositAmount,
-        depositPaid: data.depositPaid || false,
-        totalPaid,
-        paymentStatus: calcPaymentStatus(totalPaid, totalPrice, depositAmount),
-        payments,
-        status: 'confirmed',
-        workspaceId: authStore.workspaceId,
-        createdAt: serverTimestamp(),
-        ...mseeStamp(data.viaMsee, null, {
-          percent: data.mseeCommissionPercent,
-          amount: data.mseeCommissionAmount
-        })
+    await addDoc(collection(db, 'bookings'), {
+      reservationId: generateReservationId(),
+      guestName: data.guestName || '',
+      phone: data.phone || '',
+      origin: data.origin || '',
+      notes: data.notes || '',
+      tags: data.tags || [],
+      apartmentId: data.apartmentId,
+      checkIn: data.checkIn,
+      checkOut: data.checkOut,
+      pricePerNight: Number(data.pricePerNight) || 0,
+      days,
+      totalPrice,
+      depositAmount,
+      depositPaid: data.depositPaid || false,
+      totalPaid,
+      paymentStatus: calcPaymentStatus(totalPaid, totalPrice, depositAmount),
+      payments,
+      status: 'confirmed',
+      workspaceId: authStore.workspaceId,
+      createdAt: serverTimestamp(),
+      ...mseeStamp(data.viaMsee, {
+        percent: data.mseeCommissionPercent,
+        amount: data.mseeCommissionAmount
       })
-
-      tx.update(aptRef, { bookedNights: [...taken, ...nights].sort() })
     })
     // bookingCount is reconciled by the snapshot listener (syncCount).
   }
@@ -284,7 +202,7 @@ function mseeStamp(viaMsee, existing = null, cut = {}) {
       delete updates.mseeCommissionAmount
       Object.assign(
         updates,
-        mseeStamp(data.viaMsee, existing, {
+        mseeStamp(data.viaMsee, {
           percent: data.mseeCommissionPercent,
           amount: data.mseeCommissionAmount
         })
@@ -301,33 +219,18 @@ function mseeStamp(viaMsee, existing = null, cut = {}) {
     }
 
     await updateDoc(doc(db, 'bookings', id), updates)
-
-    // A moved stay frees the nights it used to hold and takes new ones. Done
-    // after the write rather than inside it, because the authority for the index
-    // is the bookings themselves — reindex recomputes from them, so it cannot
-    // drift even if this call is interrupted halfway.
-    if (existing) {
-      const moved = data.apartmentId && data.apartmentId !== existing.apartmentId
-      await reindex(existing.apartmentId)
-      if (moved) await reindex(data.apartmentId)
-    }
   }
 
   async function cancelBooking(id) {
-    const existing = bookings.value.find(b => b.id === id)
     await updateDoc(doc(db, 'bookings', id), {
       status: 'cancelled',
       cancelledAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     })
-    // A cancelled stay must free its nights, or the apartment stays unsellable.
-    if (existing) await reindex(existing.apartmentId, id)
   }
 
   async function deleteBooking(id) {
-    const existing = bookings.value.find(b => b.id === id)
     await deleteDoc(doc(db, 'bookings', id))
-    if (existing) await reindex(existing.apartmentId, id)
     // bookingCount is reconciled by the snapshot listener (syncCount).
   }
 
@@ -356,45 +259,6 @@ function mseeStamp(viaMsee, existing = null, cut = {}) {
       paymentStatus: calcPaymentStatus(totalPaid, booking.totalPrice, booking.depositAmount || 0),
       updatedAt: serverTimestamp()
     })
-  }
-
-  /*
-   * Rewrite one apartment's night index from the bookings themselves.
-   *
-   * The bookings are the truth; the index is a copy kept so that a create can be
-   * atomic. A copy that can drift needs a way back, and this is it: recomputed
-   * rather than adjusted, so one interrupted call cannot leave a night locked
-   * for ever.
-   *
-   * `excludeId` is for the booking being cancelled or deleted, whose removal has
-   * not reached the local snapshot yet.
-   */
-  async function reindex(apartmentId, excludeId = null) {
-    if (!apartmentId) return
-    const nights = [...nightsTakenBy(bookings.value, apartmentId, excludeId)].sort()
-    await updateDoc(doc(db, 'apartments', apartmentId), { bookedNights: nights }).catch(() => {})
-  }
-
-  /*
-   * Bring every apartment's index in step with reality.
-   *
-   * The same self-healing idea the counters already use: the owner opening their
-   * own data is the moment drift gets fixed, and it is also how apartments that
-   * existed before there was an index get one. Only differences are written, so
-   * the usual case costs nothing.
-   */
-  async function reconcileNights(apartmentIds) {
-    const { useApartmentsStore } = await import('./apartments')
-    const apartmentsStore = useApartmentsStore()
-    const list = apartmentIds || apartmentsStore.apartments.map(a => a.id)
-
-    for (const apt of apartmentsStore.apartments) {
-      if (!list.includes(apt.id)) continue
-      const want = [...nightsTakenBy(bookings.value, apt.id)].sort()
-      const have = [...(apt.bookedNights || [])].sort()
-      if (want.length === have.length && want.every((n, i) => n === have[i])) continue
-      await updateDoc(doc(db, 'apartments', apt.id), { bookedNights: want }).catch(() => {})
-    }
   }
 
   function isDateBooked(apartmentId, date) {
@@ -472,7 +336,6 @@ function mseeStamp(viaMsee, existing = null, cut = {}) {
     bookings, loading,
     subscribe, unsubscribeAll,
     calculateBooking, checkConflict, calcPaymentStatus,
-    nightsOf, reindex, reconcileNights,
     addBooking, updateBooking, cancelBooking, deleteBooking,
     addPayment, removePayment,
     isDateBooked, bookingsForApartment,

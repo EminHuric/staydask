@@ -114,24 +114,6 @@
                 class="btn btn-ghost btn-sm"
                 @click="toggleMain(u)"
               >{{ u.mainAdmin ? t('Remove main') : t('Make main') }}</button>
-              <!--
-                The agency switches. Main admins only, because one of them grants
-                write access into other people's calendars.
-              -->
-              <button
-                v-if="iAmMain"
-                class="btn btn-sm"
-                :class="u.agency ? 'btn-primary' : 'btn-ghost'"
-                :title="t('An account an outside agency signs in as')"
-                @click="toggleAgency(u)"
-              >{{ u.agency ? t('Not an agency') : t('Mark as agency') }}</button>
-              <button
-                v-if="iAmMain && !u.agency"
-                class="btn btn-sm"
-                :class="u.agencyAccess ? 'btn-primary' : 'btn-ghost'"
-                :title="t('Let the agency create bookings in this account')"
-                @click="toggleAgencyAccess(u)"
-              >{{ u.agencyAccess ? t('Block agency bookings') : t('Allow agency bookings') }}</button>
               <button class="btn btn-ghost btn-sm" @click="resetUserPassword(u)">{{ t('Reset password') }}</button>
               <button
                 class="btn btn-sm"
@@ -388,34 +370,6 @@ async function toggleMain(u) {
     flash(next ? t('{name} is now a main admin.', { name }) : t('{name} is no longer a main admin.', { name }))
   } catch (e) {
     flash(t('Could not change main-admin status: {err}', { err: errText(e) }), true)
-  }
-}
-
-async function toggleAgency(u) {
-  const next = !u.agency
-  const name = u.username || u.email
-  if (next && !confirm(t('Mark {name} as the selling agency? It will be able to create bookings in accounts that allow agency bookings.', { name }))) return
-  try {
-    await adminStore.setUserAgency(u.id, next)
-    flash(next
-      ? t('{name} is now the selling agency.', { name })
-      : t('{name} is no longer the selling agency.', { name }))
-  } catch (e) {
-    flash(t('Could not change agency status: {err}', { err: errText(e) }), true)
-  }
-}
-
-async function toggleAgencyAccess(u) {
-  const next = !u.agencyAccess
-  const name = u.username || u.email
-  if (next && !confirm(t('Let the agency create bookings in {name}? The agency can only add bookings marked as theirs, and can never change this account\'s own bookings or apartments.', { name }))) return
-  try {
-    await adminStore.setUserAgencyAccess(u.id, next)
-    flash(next
-      ? t('The agency can now book into {name}.', { name })
-      : t('The agency can no longer book into {name}.', { name }))
-  } catch (e) {
-    flash(t('Could not change agency access: {err}', { err: errText(e) }), true)
   }
 }
 

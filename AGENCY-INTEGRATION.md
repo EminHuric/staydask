@@ -5,46 +5,32 @@ it brings straight into this database. This file is the whole contract.
 
 ## The shape of it
 
-There is no API and no server on either side. MsEe Central signs in to **this**
-Firebase project (`apartmens-saas`) as a dedicated account and writes a booking
-document, subject to the rules in `firestore.rules`. Nothing is exported, nothing
-is copied, and no scheduled job runs anywhere.
+There is no API and no server on either side, and **this system is not modified
+to grant anybody write access.** MsEe Central signs in to this Firebase project
+as an account with the existing `admin` role and *reads* — apartments, bookings,
+accounts. `firestore.rules` is untouched by the integration: an administrator
+could already read every account, which is exactly and only what is needed.
 
 The RMS stays the source of truth for units, availability and every booking.
-MsEe Central reads all of them — it has to, because a booking the owner took on
-the phone blocks a unit exactly as firmly as one of theirs — and counts only its
-own as sales.
+Bookings are taken here and nowhere else. MsEe Central reads all of them — it
+has to, because a booking taken on the phone blocks a unit exactly as firmly as
+one MsEe brought — and counts only the ones marked as its own.
 
 ## Switching it on
 
-Two flags, both in the Admin panel, both main-admin only:
+1. Create an account here with the **admin** role (Admin → Invite Codes → make a
+   code with role admin, then register with it). Or use an existing admin login.
+2. In MsEe Central: Services → StayBrain → Properties & bookings → **Connect**,
+   and sign in with it.
 
-1. **Mark as agency** on the account MsEe Central signs in as. It stays a
-   regular user — it does not need, and should not be given, the admin role.
-   Guarded in the rules the same way `mainAdmin` is, because the self-update path
-   would otherwise let any account grant itself an agency's write access.
-2. **Allow agency bookings** on each account that wants the agency selling for
-   it. Without this the agency cannot see the account at all, and any booking it
-   somehow attempted would be refused.
+Nothing to deploy, no flags, no rules change.
 
-Both are reversible, and revoking the second stops new agency bookings
-immediately AND hides the account from the agency again — bookings already made
-stay, because they are real stays.
-
-Until an account switches the second flag on, the agency cannot even see that
-the account exists.
-
-## What the agency account can do
-
-| | |
-|---|---|
-| Read the accounts that allowed it, and their apartments and bookings | yes — and **only** those, so it needs no admin role and cannot enumerate the platform |
-| Create a booking stamped as theirs | yes, in accounts that allowed it |
-| Correct or cancel a booking it created | yes |
-| Change a booking this account entered | **no** |
-| Change an apartment's name, price or capacity | **no** — only `bookedNights` |
-| Touch guests, notes or invite codes | **no** |
-| Delete anything | **no** — it cancels, which keeps the record |
+One thing worth knowing rather than discovering: an `admin` account here can read
+every account on the platform and manage accounts. That is this system's existing
+design, not something the integration added. If that is ever too much, the
+narrower version is a rules change that confines a marked account to the
+properties that opted in — one deploy, and worth doing only if somebody other
+than the owner is going to hold these credentials.
 
 ## Marking a booking as the agency's
 
