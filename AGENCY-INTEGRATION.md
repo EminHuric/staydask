@@ -24,8 +24,8 @@ Two flags, both in the Admin panel, both main-admin only:
    Guarded in the rules the same way `mainAdmin` is, because the self-update path
    would otherwise let any account grant itself an agency's write access.
 2. **Allow agency bookings** on each account that wants the agency selling for
-   it. Without this, the agency can read that account and every booking it tries
-   to create is refused.
+   it. Without this the agency cannot see the account at all, and any booking it
+   somehow attempted would be refused.
 
 Both are reversible, and revoking the second stops new agency bookings
 immediately AND hides the account from the agency again — bookings already made
