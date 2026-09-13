@@ -152,6 +152,12 @@
               typing it would be a fourth number that can disagree with the three
               it comes from.
             -->
+            <div class="form-group msee-who">
+              <label class="form-label">{{ t('Brought by') }}</label>
+              <input v-model="form.mseeBroughtBy" class="form-input"
+                :placeholder="t('Which person at MsEe')" />
+            </div>
+
             <div class="msee-cut-sum">
               <span>{{ t('MsEe earns in total') }}</span>
               <strong>€{{ mseeCommission.toFixed(2) }}</strong>
@@ -313,7 +319,8 @@ const form = ref({
   apartmentId: '', checkIn: '', checkOut: '',
   pricePerNight: 0, depositAmount: 0, depositPaid: false,
   notes: '', tags: [], viaMsee: false,
-  mseeCommissionMode: 'percent', mseeCommissionPercent: 0, mseeCommissionPerNight: 0
+  mseeCommissionMode: 'percent', mseeCommissionPercent: 0, mseeCommissionPerNight: 0,
+  mseeBroughtBy: ''
 })
 
 onMounted(() => {
@@ -327,6 +334,7 @@ onMounted(() => {
       mseeCommissionMode: b.mseeCommissionMode || 'percent',
       mseeCommissionPercent: b.mseeCommissionPercent || 0,
       mseeCommissionPerNight: b.mseeCommissionPerNight || 0,
+      mseeBroughtBy: b.mseeBroughtBy || '',
       apartmentId: b.apartmentId || '',
       checkIn: b.checkIn || '',
       checkOut: b.checkOut || '',
@@ -445,7 +453,8 @@ async function save() {
       mseeCommissionMode: form.value.mseeCommissionMode,
       mseeCommissionPercent: form.value.mseeCommissionPercent,
       mseeCommissionPerNight: form.value.mseeCommissionPerNight,
-      mseeCommissionAmount: mseeCommission.value
+      mseeCommissionAmount: mseeCommission.value,
+      mseeBroughtBy: form.value.mseeBroughtBy
     }
     if (props.booking) {
       await bookingsStore.updateBooking(props.booking.id, data)
@@ -625,6 +634,11 @@ form { display: flex; flex-direction: column; gap: 0; overflow-y: auto; }
 .msee-cut .form-group {
   margin: 0;
   max-width: 120px;
+}
+
+.msee-who {
+  margin: 0;
+  max-width: 190px;
 }
 
 .msee-cut-sum {

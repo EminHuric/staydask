@@ -57,7 +57,8 @@ function mseeStamp(viaMsee, cut = {}) {
       mseeCommissionMode: null,
       mseeCommissionPercent: null,
       mseeCommissionPerNight: null,
-      mseeCommissionAmount: null
+      mseeCommissionAmount: null,
+      mseeBroughtBy: null
     }
   }
 
@@ -75,7 +76,9 @@ function mseeStamp(viaMsee, cut = {}) {
     mseeCommissionMode: cut.mode === 'per_night' ? 'per_night' : 'percent',
     mseeCommissionPercent: Number(cut.percent) || 0,
     mseeCommissionPerNight: Number(cut.perNight) || 0,
-    mseeCommissionAmount: Number(cut.amount) || 0
+    mseeCommissionAmount: Number(cut.amount) || 0,
+    /* Which person at the agency brought it. Their name, as typed. */
+    mseeBroughtBy: cut.broughtBy || ''
   }
 }
 
@@ -213,13 +216,15 @@ export const useBookingsStore = defineStore('bookings', () => {
       delete updates.mseeCommissionPercent
       delete updates.mseeCommissionPerNight
       delete updates.mseeCommissionAmount
+      delete updates.mseeBroughtBy
       Object.assign(
         updates,
         mseeStamp(data.viaMsee, {
           mode: data.mseeCommissionMode,
           percent: data.mseeCommissionPercent,
           perNight: data.mseeCommissionPerNight,
-          amount: data.mseeCommissionAmount
+          amount: data.mseeCommissionAmount,
+          broughtBy: data.mseeBroughtBy
         })
       )
     }
