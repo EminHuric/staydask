@@ -29,6 +29,19 @@
         <option value="upcoming">{{ t('Upcoming') }}</option>
         <option value="past">{{ t('Past') }}</option>
       </select>
+      <!--
+        Where the booking came from.
+
+        Its own filter because it answers a question none of the others do: which
+        of these did the agency bring, and what did that cost in commission. The
+        total below follows this filter, so picking "Through MsEe" turns this
+        screen into the agency statement for the period.
+      -->
+      <select v-model="filterSource" class="form-input filter-select">
+        <option value="">{{ t('All sources') }}</option>
+        <option value="msee">{{ t('Through MsEe') }}</option>
+        <option value="direct">{{ t('Direct / own') }}</option>
+      </select>
       <button v-if="hasFilter" class="btn btn-ghost btn-sm" @click="clearFilters">{{ t('Clear') }}</button>
     </div>
 
@@ -40,6 +53,26 @@
         <span class="chip-count">{{ s.count }}</span>
         <span class="chip-label">{{ t(s.label) }}</span>
       </button>
+    </div>
+
+    <!-- What the agency brought, and what it is owed for it -->
+    <div v-if="filterSource === 'msee'" class="msee-summary">
+      <div>
+        <span class="msee-label">{{ t('Reservations through MsEe') }}</span>
+        <strong>{{ mseeTotals.count }}</strong>
+      </div>
+      <div>
+        <span class="msee-label">{{ t('Their value') }}</span>
+        <strong>€{{ mseeTotals.value.toFixed(2) }}</strong>
+      </div>
+      <div>
+        <span class="msee-label">{{ t('MsEe commission') }}</span>
+        <strong class="msee-accent">€{{ mseeTotals.commission.toFixed(2) }}</strong>
+      </div>
+      <div>
+        <span class="msee-label">{{ t('You keep') }}</span>
+        <strong>€{{ (mseeTotals.value - mseeTotals.commission).toFixed(2) }}</strong>
+      </div>
     </div>
 
     <!-- Empty -->
@@ -204,7 +237,27 @@ const paymentBooking = ref(null)
 
 watch([search, filterApt, filterPayment, filterStatus], () => { page.value = 1 })
 
-const hasFilter = computed(() => search.value || filterApt.value || filterPayment.value || filterStatus.value)
+const filterSource = ref('')
+
+const hasFilter = computed(() =>
+  search.value || filterApt.value || filterPayment.value || filterStatus.value || filterSource.value
+)
+
+/*
+ * The agency's side of the ledger, over whatever is currently listed.
+ *
+ * Summed from the bookings themselves rather than kept anywhere: the commission
+ * was decided on each booking, so adding them up is the only figure that cannot
+ * drift from what was agreed.
+ */
+const mseeTotals = computed(() => {
+  const rows = filtered.value.filter(b => b.source === 'MSEE')
+  return {
+    count: rows.length,
+    value: rows.reduce((n, b) => n + (b.totalPrice || 0), 0),
+    commission: rows.reduce((n, b) => n + (b.mseeCommissionAmount || 0), 0)
+  }
+})
 
 const TAGS_MAP = {
   vip: '⭐ VIP', late_arrival: '🌙 Late', early_checkin: '🌅 Early',
@@ -217,6 +270,9 @@ const filtered = computed(() => {
   const today = startOfDay(new Date())
   // Always exclude cancelled bookings from the UI
   let list = bookings.value.filter(b => b.status !== 'cancelled')
+
+  if (filterSource.value === 'msee') list = list.filter(b => b.source === 'MSEE')
+  else if (filterSource.value === 'direct') list = list.filter(b => b.source !== 'MSEE')
 
   if (filterApt.value) list = list.filter(b => b.apartmentId === filterApt.value)
   if (filterPayment.value) list = list.filter(b => b.paymentStatus === filterPayment.value)
@@ -274,7 +330,7 @@ function payBadge(b) {
   return PAY_BADGES[b.paymentStatus] || 'badge-amber'
 }
 
-function clearFilters() { search.value = ''; filterApt.value = ''; filterPayment.value = ''; filterStatus.value = '' }
+function clearFilters() { search.value = ''; filterApt.value = ''; filterPayment.value = ''; filterStatus.value = ''; filterSource.value = '' }
 function openAdd() { selectedBooking.value = null; showModal.value = true }
 function openEdit(b) { selectedBooking.value = b; showModal.value = true }
 function openPayments(b) { paymentBooking.value = b; showPayments.value = true }
@@ -286,6 +342,37 @@ function fromModalPayments() {
 </script>
 
 <style scoped>
+/* The agency's bookings, marked in the list — the same orange MsEe Central uses. */
+.msee-summary {
+  background: rgb(255 138 30 / 8%);
+  border: 1px solid rgb(255 138 30 / 30%);
+  border-radius: 10px;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+}
+
+.msee-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.msee-label {
+  color: var(--text-3);
+  font-size: 0.72rem;
+}
+
+.msee-summary strong {
+  font-size: 1.1rem;
+}
+
+.msee-accent {
+  color: #ff8a1e;
+}
+
 .page { padding: 1.5rem; max-width: 1400px; margin: 0 auto; }
 .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; gap: 1rem; }
 
